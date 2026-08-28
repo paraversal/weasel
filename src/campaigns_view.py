@@ -12,26 +12,73 @@ from textual.widgets import Input, TextArea, Button, Label
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Static, ListView, ListItem, Label
+import pyperclip
 
 from src.freshie import Freshie
 from src.db import DEBUG_clear_table, get_all_campaigns, add_campaign, get_campaign_sent_info
 
 class FreshieColumn(VerticalScroll):
     """One labeled, scrollable column of freshies."""
+    
+    DEFAULT_CSS = """
+        .freshie-row {
+            width: 1fr;
+            height: 5;
+        }
 
-    def __init__(self, title: str, freshies: list[Freshie], **kwargs):
+        .freshie-row Label {
+            width: 1fr;
+            content-align: left middle;
+            margin: 2;
+        }
+
+        .freshie-row Button {
+            width: auto;
+            margin: 1;
+        }
+
+        .copy-all-button {
+            width: 1fr;
+            margin-bottom: 1;
+        }
+    """
+    
+
+    def __init__(
+        self,
+        title: str,
+        freshies: list[Freshie],
+        show_copy_all: bool = False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.title_text = title
         self.freshies = freshies
+        self.show_copy_all = show_copy_all
 
     def compose(self) -> ComposeResult:
         yield Static(self.title_text, classes="column-header")
+        if self.show_copy_all:
+            yield Button("Copy all", id="copy-all", classes="copy-all-button")
         yield ListView(
             *[
-                ListItem(Label(f"{f.first_name} {f.last_name}"))
+                ListItem(
+                    Horizontal(
+                        Label(f"{f.first_name} {f.last_name}"),
+                        Button(f.email, flat=True, id="copy-one"),
+                        classes="freshie-row",
+                    )
+                )
                 for f in self.freshies
             ]
         )
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "copy-all":
+            self.app.notify("Copied email")
+            pass  # business logic goes here
+        if event.button.id == "copy-one":
+            self.app.notify(f"Copied one address: f{event.button.label}")
 
 
 class CampaignSentStatusView(Horizontal):
@@ -44,7 +91,9 @@ class CampaignSentStatusView(Horizontal):
 
     def compose(self) -> ComposeResult:
         yield FreshieColumn("Sent", self.sent, id="sent-column")
-        yield FreshieColumn("Not sent", self.not_sent, id="not-sent-column")
+        yield FreshieColumn(
+            "Not sent", self.not_sent, show_copy_all=True, id="not-sent-column"
+        )
 
 class CampaignView(Static):
     DEFAULT_CSS = """
@@ -81,11 +130,40 @@ class CampaignsView(Static):
         super().__init__()
 
     campaigns = reactive(get_all_campaigns(), recompose=True)
+    
+    DEFAULT_CSS = """
+    #campaign-toolbar {
+        
+        padding: 0 1;
+        align: right middle;
+        border-bottom: solid $panel-lighten-2;
+        
+    }
+
+    #campaign-toolbar Button {
+        margin-left: 1;
+        min-width: 12;
+    }
+
+    #delete-campaigns {
+        background: transparent;
+        border: round $error;
+        color: $error;
+    }
+
+    #delete-campaigns:hover {
+        background: $error 20%;
+        color: $text;
+    }
+    
+    """
+    
 
     def compose(self) -> ComposeResult:
         yield HorizontalGroup(
-            Button("Delete all!!!!", id="delete-campaigns", variant="error"), 
-            Button("Add Campaign", id="new-campaign", variant="primary")
+            Button("Delete all!!!!", id="delete-campaigns", variant="error"),
+            Button("Add Campaign", id="new-campaign", variant="primary"),
+            id="campaign-toolbar",
         )
         no_campaigns = len(self.campaigns) < 1
         if no_campaigns:

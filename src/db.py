@@ -20,11 +20,9 @@ def db_ready() -> sqlite3.Connection:
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
-        country_origin TEXT,
         email TEXT NOT NULL,
-        program TEXT NOT NULL,
-        added_manually BOOLEAN NOT NULL,
-        date_added TEXT NOT NULL
+        date_added TEXT NOT NULL,
+        UNIQUE(email)
         );""",
         f"""--sql
         CREATE TABLE IF NOT EXISTS campaigns(
@@ -46,35 +44,36 @@ def db_ready() -> sqlite3.Connection:
         cursor.execute(table)
     return connection
 
-def add_freshies(freshies: list[Freshie]):
+def add_freshies(freshies: list[Freshie]) -> int:
+    """Add all freshies that do not exist yet to the db. Returns number of freshies added."""
     connection = db_ready()
     cursor = connection.cursor()
+    count_added = 0
     for freshie in freshies:
-        cursor.execute("""--sql
-            INSERT INTO freshies(
+        count_before = cursor.execute("SELECT COUNT(*) FROM freshies").fetchone()
+        ret = cursor.execute("""--sql
+            INSERT OR IGNORE INTO freshies(
                 first_name,
                 last_name,
-                country_origin,
                 email,
-                program,
-                added_manually,
                 date_added
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?);
+            VALUES (?, ?, ?, ?);
             """,
             (
                 freshie.first_name,
                 freshie.last_name,
-                freshie.country_origin,
                 freshie.email,
-                freshie.program,
-                freshie.added_manually,
                 freshie.date_added
             )
         )
+        count_after = cursor.execute("SELECT COUNT(*) FROM freshies").fetchone()
+        if count_after > count_before:
+            count_added += 1
 
     connection.commit()
     connection.close()
+    return count_added
 
 def delete_freshie(freshie_id: int):
     connection = db_ready()
@@ -118,33 +117,6 @@ def get_freshie(freshie_id: int):
     row = cursor.fetchone()
     connection.close()
     return row
-
-def update_freshie(freshie_id: int, freshie: Freshie):
-    connection = db_ready()
-    cursor = connection.cursor()
-    cursor.execute("""--sql
-        UPDATE freshies
-        SET first_name = ?,
-            last_name = ?,
-            country_origin = ?,
-            email = ?,
-            program = ?,
-            added_manually = ?,
-            date_added = ?
-        WHERE id = ?;
-        """,
-        (
-            freshie.first_name,
-            freshie.last_name,
-            freshie.country_origin,
-            freshie.email,
-            freshie.program,
-            freshie.added_manually,
-            freshie.date_added,
-            freshie_id,
-        )
-    )
-    connection.close()
 
 def get_all_campaigns():
     connection = db_ready()

@@ -46,9 +46,6 @@ class FreshiesView(Widget):
             "First Name",
             "Last Name",
             "Email",
-            "Program",
-            "Country",
-            "Manually Added?",
             "Date Added",
         )
         self.freshies = get_freshies()
@@ -64,9 +61,6 @@ class FreshiesView(Widget):
                 f.first_name,
                 f.last_name,
                 f.email,
-                f.program,
-                f.country_origin,
-                "✅" if f.added_manually else "❌",
                 f.date_added,
             )
     
