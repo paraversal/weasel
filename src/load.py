@@ -13,7 +13,8 @@ def extract_freshies(filename: Path) -> int:
             first_name=row["VORNAME"],
             last_name=row["NACHNAME"],
             email=row["EMAIL"],
-            date_added=str(datetime.datetime.today())
+            date_added=str(datetime.datetime.today()),
+            batch_id=None
         ))
     number_freshies_added = add_freshies(freshies)
     return number_freshies_added

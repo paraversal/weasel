@@ -22,6 +22,7 @@ def db_ready() -> sqlite3.Connection:
         last_name TEXT NOT NULL,
         email TEXT NOT NULL,
         date_added TEXT NOT NULL,
+        batch_id INTEGER NOT NULL,
         UNIQUE(email)
         );""",
         f"""--sql
@@ -32,12 +33,18 @@ def db_ready() -> sqlite3.Connection:
         info TEXT NOT NULL
         );""",
         f"""--sql
+        CREATE TABLE IF NOT EXISTS pastes(
+        id INTEGER PRIMARY KEY AUTOINCREMENT
+        );""",
+        f"""--sql
         CREATE TABLE IF NOT EXISTS campaigns_sent_instances(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         campaign_id INTEGER NOT NULL,
         student_id INTEGER NOT NULL,
+        paste_id INTEGER NOT NULL,
         FOREIGN KEY(campaign_id) REFERENCES campaigns(id),
-        FOREIGN KEY(student_id) REFERENCES freshies(id)
+        FOREIGN KEY(student_id) REFERENCES freshies(id),
+        FOREIGN KEY(paste_id) REFERENCES pastes(id)
         );"""
     ]
     for table in tables:
@@ -49,22 +56,27 @@ def add_freshies(freshies: list[Freshie]) -> int:
     connection = db_ready()
     cursor = connection.cursor()
     count_added = 0
+
+    next_batch_id = cursor.execute("SELECT COALESCE(MAX(batch_id), 0) FROM freshies").fetchone()[0] + 1
+    
     for freshie in freshies:
         count_before = cursor.execute("SELECT COUNT(*) FROM freshies").fetchone()
-        ret = cursor.execute("""--sql
+        cursor.execute("""--sql
             INSERT OR IGNORE INTO freshies(
                 first_name,
                 last_name,
                 email,
-                date_added
+                date_added,
+                batch_id
             )
-            VALUES (?, ?, ?, ?);
+            VALUES (?, ?, ?, ?, ?);
             """,
             (
                 freshie.first_name,
                 freshie.last_name,
                 freshie.email,
-                freshie.date_added
+                freshie.date_added,
+                next_batch_id
             )
         )
         count_after = cursor.execute("SELECT COUNT(*) FROM freshies").fetchone()
@@ -90,7 +102,7 @@ def delete_freshie(freshie_id: int):
     connection.commit()
     connection.close()
 
-def get_freshies():
+def get_all_freshies():
     connection = db_ready()
     cursor = connection.cursor()
     cursor.execute("""--sql

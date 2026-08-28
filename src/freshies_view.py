@@ -5,7 +5,11 @@ from textual.widget import Widget
 from textual.widgets import DataTable
 from textual.app import ComposeResult
 
-from src.db import get_freshies
+from typing import TYPE_CHECKING, cast
+if TYPE_CHECKING:
+    from src.app import WeaselApp
+
+from src.db import get_all_freshies
 from src.freshie import Freshie
 
 class FreshiesView(Widget):
@@ -33,14 +37,17 @@ class FreshiesView(Widget):
     def __init__(self):
         super().__init__()
 
-    freshies: reactive[list[Freshie]] = reactive(list, init=False)
+    freshies: reactive[list[Freshie]] = reactive(list)
 
     def compose(self) -> ComposeResult:
         yield Container(
-            DataTable(id="freshie_table", zebra_stripes=True, cursor_type="row"),
+            DataTable(id="freshie_table", zebra_stripes=True, cursor_type="row", header_height=2),
         )
 
     def on_mount(self) -> None:
+        self.weasel_app = cast("WeaselApp", self.app)
+        self.freshies = self.weasel_app.freshies
+        self.watch(self.weasel_app, "freshies", self._on_source_changed)
         table = self.query_one("#freshie_table", DataTable)
         table.add_columns(
             "First Name",
@@ -48,9 +55,9 @@ class FreshiesView(Widget):
             "Email",
             "Date Added",
         )
-        self.freshies = get_freshies()
     
-    def watch_freshies(self, freshies: list[Freshie]) -> None:
+    def _on_source_changed(self, freshies: list[Freshie]) -> None:
+        self.freshies = freshies
         self.populate_table()
 
     def populate_table(self) -> None:
@@ -62,7 +69,5 @@ class FreshiesView(Widget):
                 f.last_name,
                 f.email,
                 f.date_added,
+                height=3
             )
-    
-    def action_refresh_table(self) -> None:
-        self.freshies = get_freshies()

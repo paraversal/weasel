@@ -1,3 +1,10 @@
+from typing import TYPE_CHECKING, cast
+
+from src.campaign import Campaign
+from src.messages import DataInvalidated
+if TYPE_CHECKING:
+    from src.app import WeaselApp
+
 from textual.app import App, ComposeResult
 from textual import on, work
 from textual.reactive import reactive
@@ -15,7 +22,7 @@ from textual.widgets import Static, ListView, ListItem, Label
 import pyperclip
 
 from src.freshie import Freshie
-from src.db import DEBUG_clear_table, get_all_campaigns, add_campaign, get_campaign_sent_info
+from src.db import DEBUG_clear_table, add_campaign, get_campaign_sent_info
 
 class FreshieColumn(VerticalScroll):
     """One labeled, scrollable column of freshies."""
@@ -129,7 +136,7 @@ class CampaignsView(Static):
     def __init__(self):
         super().__init__()
 
-    campaigns = reactive(get_all_campaigns(), recompose=True)
+    campaigns: reactive[list[Campaign]] = reactive(list, recompose=True)
     
     DEFAULT_CSS = """
     #campaign-toolbar {
@@ -158,6 +165,13 @@ class CampaignsView(Static):
     
     """
     
+    def on_mount(self):
+        self.weasel_app = cast("WeaselApp", self.app)
+        self.campaigns = self.weasel_app.campaigns
+        self.watch(self.weasel_app, "campaigns", self._on_source_changed)
+        
+    def _on_source_changed(self, campaigns: list[Campaign]) -> None:
+        self.campaigns = campaigns
 
     def compose(self) -> ComposeResult:
         yield HorizontalGroup(
@@ -179,12 +193,12 @@ class CampaignsView(Static):
             self.app.push_screen(AddCampaignScreen(), self.handle_new_campaign)
         if event.button.id == "delete-campaigns":
             DEBUG_clear_table("campaigns")
-            self.campaigns = get_all_campaigns()
+            self.post_message(DataInvalidated("campaigns"))
 
     def handle_new_campaign(self, result: NewCampaign | None) -> None:
         if result is not None:
             add_campaign(name=result.name, info=result.notes, text="")
-            self.campaigns = get_all_campaigns()
+            self.post_message(DataInvalidated("campaigns"))
 
 
 @dataclass
