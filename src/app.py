@@ -71,7 +71,6 @@ class WeaselApp(App):
     def on_mount(self) -> None:
         self.freshies = get_all_freshies()
         self.freshie_amount = len(self.freshies)
-        self.watch_freshie_amount(self.freshie_amount)
         self.campaigns = get_all_campaigns()
         campaign_sent_infos: dict[int, tuple[list[Freshie], list[Freshie]]] = {}
         for campaign in self.campaigns:
