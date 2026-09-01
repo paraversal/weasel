@@ -25,67 +25,43 @@ from src.freshie import Freshie
 from src.db import DEBUG_clear_table, add_campaign, get_campaign_sent_info
 
 class FreshieColumn(VerticalScroll):
-    """One labeled, scrollable column of freshies."""
-    
     DEFAULT_CSS = """
-        .freshie-row {
-            width: 1fr;
-            height: 5;
+        DataTable {
+            height: 1fr;
         }
-
-        .freshie-row Label {
-            width: 1fr;
-            content-align: left middle;
-            margin: 2;
-        }
-
-        .freshie-row Button {
-            width: auto;
-            margin: 1;
-        }
-
         .copy-all-button {
             width: 1fr;
             margin-bottom: 1;
         }
     """
-    
 
-    def __init__(
-        self,
-        title: str,
-        freshies: list[Freshie],
-        show_copy_all: bool = False,
-        **kwargs,
-    ):
+    def __init__(self, title, freshies, show_copy_all=False, **kwargs):
         super().__init__(**kwargs)
+        self.border_title = title
+        self.border_subtitle = f"{len(freshies)} freshies"
+        if show_copy_all:
+            self.styles.border = ("round", "red")
+        else: 
+            self.styles.border = ("round", "green")
         self.title_text = title
         self.freshies = freshies
         self.show_copy_all = show_copy_all
 
     def compose(self) -> ComposeResult:
-        yield Static(self.title_text, classes="column-header")
+        #yield Static(self.title_text, classes="column-header")
         if self.show_copy_all:
             yield Button("Copy all", id="copy-all", classes="copy-all-button")
-        yield ListView(
-            *[
-                ListItem(
-                    Horizontal(
-                        Label(f"{f.first_name} {f.last_name}"),
-                        Button(f.email, flat=True, id="copy-one"),
-                        classes="freshie-row",
-                    )
-                )
-                for f in self.freshies
-            ]
+        table = DataTable()
+        table.add_columns("Name", "Email")
+        table.add_rows(
+            [(f"{f.first_name} {f.last_name}", f.email) for f in self.freshies]
         )
+        yield table
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "copy-all":
-            self.app.notify("Copied email")
-            pass  # business logic goes here
-        if event.button.id == "copy-one":
-            self.app.notify(f"Copied one address: f{event.button.label}")
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        # row selection replaces the per-row copy button — click a row to act on it
+        row = event.data_table.get_row(event.row_key)
+        self.app.notify(f"Copied: {row[1]}")
 
 
 class CampaignSentStatusView(Horizontal):
@@ -97,9 +73,9 @@ class CampaignSentStatusView(Horizontal):
         self.not_sent = not_sent
 
     def compose(self) -> ComposeResult:
-        yield FreshieColumn("Sent", self.sent, id="sent-column")
+        yield FreshieColumn("Sent to", self.sent, id="sent-column")
         yield FreshieColumn(
-            "Not sent", self.not_sent, show_copy_all=True, id="not-sent-column"
+            "Not sent to", self.not_sent, show_copy_all=True, id="not-sent-column"
         )
 
 class CampaignView(Static):
@@ -121,15 +97,27 @@ class CampaignView(Static):
     }
     """
     
+    campaign_sent_to: reactive[list[Freshie]] = reactive(list, recompose=True)
+    campaign_not_sent_to: reactive[list[Freshie]] = reactive(list, recompose=True)
+    
     def __init__(self, _id: int):
         super().__init__()
         self.campaign_id = _id
-        
+    
+    def on_mount(self):
+        self.log("CampaignView mounted", self.campaign_id)
+        self.weasel_app = cast("WeaselApp", self.app)
+        self.campaign_sent_to = self.weasel_app.campaign_sent_infos[self.campaign_id][0]
+        self.campaign_not_sent_to = self.weasel_app.campaign_sent_infos[self.campaign_id][1]
+        self.watch(self.weasel_app, "campaign_sent_infos", self._on_source_changed, init=True)
+    
+    def _on_source_changed(self, campaigns: dict[int, tuple[list[Freshie], list[Freshie]]]) -> None:
+        if campaigns is not None:
+            self.campaign_sent_to = campaigns[self.campaign_id][0]
+            self.campaign_not_sent_to = campaigns[self.campaign_id][1]
+    
     def compose(self) -> ComposeResult:
-        campaign_info = get_campaign_sent_info(self.campaign_id)
-        self.sent = campaign_info[0]
-        self.not_sent = campaign_info[1]
-        yield CampaignSentStatusView(sent=self.sent, not_sent=self.not_sent)
+        yield CampaignSentStatusView(sent=self.campaign_sent_to, not_sent=self.campaign_not_sent_to)
         
 
 class CampaignsView(Static):

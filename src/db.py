@@ -1,5 +1,5 @@
 import sqlite3
-from src.freshie import Freshie, db_row_to_freshie
+from src.freshie import Freshie, db_row_to_freshie, db_rows_to_freshies
 from src.campaign import Campaign
 
 DB_PATH = "weasel_lair.db"
@@ -152,7 +152,31 @@ def DEBUG_clear_table(name: str):
     cursor.execute(f"DELETE FROM {name}")
     connection.commit()
     connection.close()
+
+def get_all_send_batches() -> dict[int, tuple[int, list[Freshie]]]:
+    """
+    returns: dict[sent_batch_id: (campaign_id, list[Freshie])]
+    """
+    connection = db_ready()
+    cursor = connection.cursor()
+    all_batch_ids = cursor.execute("SELECT DISTINCT paste_id FROM campaigns_sent_instances").fetchall()
+    all_sent_batches: dict[int, tuple[int, list[Freshie]]] = {}
+    for batch in all_batch_ids:
+        sent_instances = cursor.execute("""--sql
+            SELECT f.id, f.first_name, f.last_name, f.email, f.date_added, f.batch_id
+            FROM campaigns_sent_instances 
+            JOIN freshies f 
+            ON student_id = f.id 
+            WHERE paste_id = ?
+            """, 
+            (batch,)
+        ).fetchall()
+        campaign_id = cursor.execute("SELECT campaign_id FROM campaigns_sent_instances WHERE paste_id = ?", (batch,)).fetchone()
+        freshies = db_rows_to_freshies(sent_instances)
+        all_sent_batches[batch] = (int(campaign_id), freshies)
     
+    return all_sent_batches
+
 def get_campaign_sent_info(campaign_id: int) -> tuple[list[Freshie], list[Freshie]]:
     connection = db_ready()
     cursor = connection.cursor()

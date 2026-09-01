@@ -17,3 +17,12 @@ def db_row_to_freshie(db_freshie: tuple):
             date_added = db_freshie[4],
             batch_id = db_freshie[5]
         )
+
+def db_rows_to_freshies(db_freshies: list[tuple]) -> list[Freshie]:
+    return [Freshie(
+            first_name=db_freshie[1],
+            last_name=db_freshie[2],
+            email=db_freshie[3],
+            date_added = db_freshie[4],
+            batch_id = db_freshie[5]
+        ) for db_freshie in db_freshies]

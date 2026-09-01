@@ -5,11 +5,13 @@ from textual.app import App, ComposeResult, RenderResult
 from textual.widget import Widget
 from textual.widgets import Footer, Header, TabbedContent, Markdown, TabPane
 
+from src.sends_view import CampaignSendBatchesView
+from src.batch_view import FreshiesByBatch
 from src.messages import DataInvalidated
 from src.freshies_view import FreshiesView
 from src.load import extract_freshies
 from src.campaign import Campaign
-from src.db import get_all_freshies, get_all_campaigns
+from src.db import get_all_freshies, get_all_campaigns, get_all_send_batches, get_campaign_sent_info
 from src.freshie import Freshie
 from src.campaigns_view import CampaignsView
 from textual_fspicker import FileOpen, Filters
@@ -51,20 +53,33 @@ class WeaselApp(App):
     
     freshies: reactive[list[Freshie]] = reactive(list)
     campaigns: reactive[list[Campaign]] = reactive(list)
+    # {campaign_id: [sent, not_sent]}
+    campaign_sent_infos: reactive[dict[int, tuple[list[Freshie], list[Freshie]]]] = reactive(dict)
+    campaign_sent_instances: reactive[dict[int, tuple[int,list[Freshie]]]] = reactive(dict)
     
     freshies_view = FreshiesView()
     campaigns_view = CampaignsView()
+    copy_view = CampaignSendBatchesView()
     freshie_amount = reactive(len(get_all_freshies()))
 
     def on_mount(self) -> None:
         self.freshies = get_all_freshies()
         self.campaigns = get_all_campaigns()
+        campaign_sent_infos: dict[int, tuple[list[Freshie], list[Freshie]]] = {}
+        for campaign in self.campaigns:
+            campaign_sent_info = get_campaign_sent_info(campaign.id)
+            campaign_sent_infos[campaign.id] = campaign_sent_info
+        self.campaign_sent_infos = campaign_sent_infos
+        self.campaign_sent_instances = get_all_send_batches()        
         
     def on_data_invalidated(self, message: DataInvalidated) -> None:
         if message.dataset == "freshies":
             self.freshies = get_all_freshies()
         elif message.dataset == "campaigns":
             self.campaigns = get_all_campaigns()
+        elif message.dataset == "campaigns_sent_instances":
+            pass
+            # TODO
     
     def compose(self) -> ComposeResult:
         yield Header()
@@ -81,14 +96,14 @@ class WeaselApp(App):
             with TabPane("Campaigns", id="campaigns"):
                 yield self.campaigns_view
             with TabPane("Copies", id="copies"):
-                yield Markdown("See all copies here !!!!")
+                yield self.copy_view
             with TabPane("Adds", id="adds"):
-                yield Markdown("See all adds here!!!")
+                yield FreshiesByBatch()
         
         yield Footer()
 
     @on(TabbedContent.TabActivated)
-    def on_switch_fact(self):
+    def on_switch_fact(self, pane="#home"):
         fact_widget: Markdown = self.query_one("#fact", Markdown)
         fact = randfacts.get_fact().rstrip(".")
         fact = fact[0].lower() + fact[1:]
