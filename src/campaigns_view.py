@@ -22,7 +22,7 @@ from textual.widgets import Static, ListView, ListItem, Label
 import pyperclip
 
 from src.freshie import Freshie
-from src.db import DEBUG_clear_table, add_campaign, get_campaign_sent_info
+from src.db import DEBUG_clear_table, add_campaign, get_campaign_sent_info, get_emails_for_new_batch
 
 class FreshieColumn(VerticalScroll):
     DEFAULT_CSS = """
@@ -105,7 +105,6 @@ class CampaignView(Static):
         self.campaign_id = _id
     
     def on_mount(self):
-        self.log("CampaignView mounted", self.campaign_id)
         self.weasel_app = cast("WeaselApp", self.app)
         self.campaign_sent_to = self.weasel_app.campaign_sent_infos[self.campaign_id][0]
         self.campaign_not_sent_to = self.weasel_app.campaign_sent_infos[self.campaign_id][1]
@@ -118,7 +117,12 @@ class CampaignView(Static):
     
     def compose(self) -> ComposeResult:
         yield CampaignSentStatusView(sent=self.campaign_sent_to, not_sent=self.campaign_not_sent_to)
-        
+      
+    def on_button_pressed(self):
+        freshies_to_send_to = get_emails_for_new_batch(self.campaign_id)
+        if freshies_to_send_to:
+            pyperclip.copy(freshies_to_send_to)
+        self.weasel_app.post_message(DataInvalidated("campaigns")) 
 
 class CampaignsView(Static):
     def __init__(self):

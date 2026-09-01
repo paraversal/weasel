@@ -10,6 +10,7 @@ def extract_freshies(filename: Path) -> int:
     freshies = []
     for _, row in excel.iterrows():
         freshies.append(Freshie(
+            _id=0,
             first_name=row["VORNAME"],
             last_name=row["NACHNAME"],
             email=row["EMAIL"],

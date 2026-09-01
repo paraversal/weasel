@@ -153,50 +153,79 @@ def DEBUG_clear_table(name: str):
     connection.commit()
     connection.close()
 
-def get_all_send_batches() -> dict[int, tuple[int, list[Freshie]]]:
+def get_all_send_batches() -> dict[int, tuple[Campaign, list[Freshie]]]:
     """
-    returns: dict[sent_batch_id: (campaign_id, list[Freshie])]
+    returns: dict[sent_batch_id: (campaign, list[Freshie])]
     """
     connection = db_ready()
     cursor = connection.cursor()
     all_batch_ids = cursor.execute("SELECT DISTINCT paste_id FROM campaigns_sent_instances").fetchall()
-    all_sent_batches: dict[int, tuple[int, list[Freshie]]] = {}
+    all_sent_batches: dict[int, tuple[Campaign, list[Freshie]]] = {}
     for batch in all_batch_ids:
         sent_instances = cursor.execute("""--sql
-            SELECT f.id, f.first_name, f.last_name, f.email, f.date_added, f.batch_id
+            SELECT f.*
             FROM campaigns_sent_instances 
             JOIN freshies f 
             ON student_id = f.id 
             WHERE paste_id = ?
             """, 
-            (batch,)
+            (batch[0],)
         ).fetchall()
-        campaign_id = cursor.execute("SELECT campaign_id FROM campaigns_sent_instances WHERE paste_id = ?", (batch,)).fetchone()
+        campaign = cursor.execute("""--sql
+            SELECT campaign_id, name, text, info 
+            FROM campaigns_sent_instances 
+            JOIN campaigns ON campaign_id = campaigns.id
+            WHERE paste_id = ?
+            LIMIT 1
+        """, batch).fetchone()
         freshies = db_rows_to_freshies(sent_instances)
-        all_sent_batches[batch] = (int(campaign_id), freshies)
+        campaign = Campaign(_id=campaign[0], name=campaign[1], text=campaign[2], info=campaign[3], sent_to=[])
+        all_sent_batches[batch[0]] = (campaign, freshies)
     
     return all_sent_batches
 
-def get_campaign_sent_info(campaign_id: int) -> tuple[list[Freshie], list[Freshie]]:
+def get_emails_for_new_batch(campaign_id: int) -> str | None:
+    """Returns list of all freshies with status unsent"""
+    
+    not_sent_to: list[Freshie] = get_campaign_sent_info(campaign_id, only_unsent=True)
+    if len(not_sent_to) == 0:
+        return None
     connection = db_ready()
     cursor = connection.cursor()
-    sent = cursor.execute(
-        """--sql
-        SELECT *
-        FROM campaigns_sent_instances c 
-        JOIN freshies f ON student_id = f.id
-        WHERE c.campaign_id = ?
-        """,
-        (str(campaign_id),)
-    ).fetchall()
-
-    sent_freshies = []
-    for db_freshie in sent:
-        sent.append(db_row_to_freshie(db_freshie))
+    new_batch_id = cursor.execute("SELECT COALESCE(MAX(paste_id), 0) FROM campaigns_sent_instances").fetchone()[0]
     
+    rows = [(campaign_id, freshie.id, new_batch_id) for freshie in not_sent_to]
+    cursor.executemany("""--sql
+        INSERT INTO campaigns_sent_instances(campaign_id, student_id, paste_id)
+        VALUES(?, ?, ?)
+        """, rows
+        )
+    connection.commit()
+    connection.close()
+    return " ".join([freshie.email for freshie in not_sent_to])
+
+def get_campaign_sent_info(campaign_id: int, only_unsent=False) -> tuple[list[Freshie], list[Freshie]] | list[Freshie]:
+    connection = db_ready()
+    cursor = connection.cursor()
+    
+    sent_freshies = []
+    if not only_unsent:
+        sent = cursor.execute(
+            """--sql
+            SELECT f.*
+            FROM campaigns_sent_instances c 
+            JOIN freshies f ON student_id = f.id
+            WHERE c.campaign_id = ?
+            """,
+            (str(campaign_id),)
+        ).fetchall()
+        
+        for db_freshie in sent:
+            sent_freshies.append(db_row_to_freshie(db_freshie))
+        
     not_sent = cursor.execute(
         """--sql
-        SELECT *
+        SELECT f.*
         FROM freshies f
         LEFT JOIN campaigns_sent_instances s 
         ON s.campaign_id = ? AND student_id = f.id
@@ -209,6 +238,8 @@ def get_campaign_sent_info(campaign_id: int) -> tuple[list[Freshie], list[Freshi
     for db_freshie in not_sent:
         not_sent_freshies.append(db_row_to_freshie(db_freshie))
     
+    if only_unsent:
+        return not_sent_freshies
     return sent_freshies, not_sent_freshies
 
 def add_campaign(name: str, text: str, info: str):

@@ -1,10 +1,10 @@
 import randfacts
 from textual import on, work
 from textual.reactive import reactive
-from textual.app import App, ComposeResult, RenderResult
-from textual.widget import Widget
+from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, TabbedContent, Markdown, TabPane
 
+from src.home import manual_doc
 from src.sends_view import CampaignSendBatchesView
 from src.batch_view import FreshiesByBatch
 from src.messages import DataInvalidated
@@ -55,39 +55,52 @@ class WeaselApp(App):
     campaigns: reactive[list[Campaign]] = reactive(list)
     # {campaign_id: [sent, not_sent]}
     campaign_sent_infos: reactive[dict[int, tuple[list[Freshie], list[Freshie]]]] = reactive(dict)
-    campaign_sent_instances: reactive[dict[int, tuple[int,list[Freshie]]]] = reactive(dict)
+    campaign_sent_instances: reactive[dict[int, tuple[Campaign, list[Freshie]]]] = reactive(dict)
     
     freshies_view = FreshiesView()
     campaigns_view = CampaignsView()
     copy_view = CampaignSendBatchesView()
-    freshie_amount = reactive(len(get_all_freshies()))
+    freshie_amount = reactive(0, init=True)
+    
+    def watch_freshie_amount(self, new_value: int) -> None:
+        print(new_value)
+        self.query_one("#status", Markdown).update(
+            f"You are currently managing *{new_value}* freshies. Wow!!"
+        )
 
     def on_mount(self) -> None:
         self.freshies = get_all_freshies()
+        self.freshie_amount = len(self.freshies)
+        self.watch_freshie_amount(self.freshie_amount)
         self.campaigns = get_all_campaigns()
         campaign_sent_infos: dict[int, tuple[list[Freshie], list[Freshie]]] = {}
         for campaign in self.campaigns:
             campaign_sent_info = get_campaign_sent_info(campaign.id)
             campaign_sent_infos[campaign.id] = campaign_sent_info
-        self.campaign_sent_infos = campaign_sent_infos
-        self.campaign_sent_instances = get_all_send_batches()        
+        self.campaign_sent_infos = campaign_sent_infos    
+        self.campaign_sent_instances = get_all_send_batches()   
         
     def on_data_invalidated(self, message: DataInvalidated) -> None:
         if message.dataset == "freshies":
             self.freshies = get_all_freshies()
+            self.freshie_amount = len(self.freshies)
         elif message.dataset == "campaigns":
             self.campaigns = get_all_campaigns()
-        elif message.dataset == "campaigns_sent_instances":
-            pass
-            # TODO
+            campaign_sent_infos: dict[int, tuple[list[Freshie], list[Freshie]]] = {}
+            for campaign in self.campaigns:
+                campaign_sent_info = get_campaign_sent_info(campaign.id)
+                campaign_sent_infos[campaign.id] = campaign_sent_info
+            self.campaign_sent_infos = campaign_sent_infos 
+            self.campaign_sent_instances = get_all_send_batches()
+        else:
+            print(f"THIS SHOULD NOT HAPPEN! Invalid dataset type: {message.dataset}")
     
     def compose(self) -> ComposeResult:
         yield Header()
         with TabbedContent(initial="home", id="main-tabs"):
             with TabPane("Home", id="home"):
                 yield Markdown("# Home - Welcome")
-                yield Markdown("Weasel is your one stop shop for easy email campaign management.")
-                yield Markdown(f"You are currently managing *{self.freshie_amount}* freshies. Wow!!")
+                yield Markdown(id="status")
                 yield Markdown("## Did you know that...")
                 yield Markdown(id="fact")
                 
@@ -99,11 +112,13 @@ class WeaselApp(App):
                 yield self.copy_view
             with TabPane("Adds", id="adds"):
                 yield FreshiesByBatch()
+            with TabPane("?"):
+                yield Markdown(manual_doc)
         
         yield Footer()
 
-    @on(TabbedContent.TabActivated)
-    def on_switch_fact(self, pane="#home"):
+    @on(TabbedContent.TabActivated, pane="#home")
+    def on_switch_fact(self):
         fact_widget: Markdown = self.query_one("#fact", Markdown)
         fact = randfacts.get_fact().rstrip(".")
         fact = fact[0].lower() + fact[1:]
@@ -114,10 +129,9 @@ class WeaselApp(App):
         filters = Filters((".xlsx", lambda p: p.suffix.lower() == ".xlsx"))
         if opened := await self.push_screen_wait(FileOpen(title="Select freshie table file", filters=filters)):
             number_extracted = extract_freshies(opened)
-            self.notify(f"{number_extracted} freshies extracted!!! {"The family is groooowing!!" if number_extracted > 1 else "Well at least we didn't shrink!!!"}")
-            updated_freshies_list = get_all_freshies()
-            self.freshie_amount = len(updated_freshies_list)
-            self.freshies_view.freshies = updated_freshies_list
+            self.notify(f"{number_extracted} freshies extracted!!! {"The family is groooowing!!" if number_extracted > 1 else "Well at least we didn't shrink!!!"}")            
+            self.post_message(DataInvalidated("freshies"))
+            self.post_message(DataInvalidated("campaigns"))
 
     def quit(self) -> None:
         self.quit()

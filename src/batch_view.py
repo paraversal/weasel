@@ -4,7 +4,7 @@ from operator import attrgetter
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
 from textual.reactive import reactive
-from textual.widgets import Collapsible, DataTable
+from textual.widgets import Collapsible, DataTable, Markdown
 
 from src.freshie import Freshie
 
@@ -53,6 +53,9 @@ class FreshiesByBatch(VerticalScroll):
         self.freshies = freshies
 
     def compose(self) -> ComposeResult:
+        if len(self.freshies) == 0:
+            yield Markdown("No freshies added yet! Yer silly güüse! [In scottish accent]")
+            return
         ordered = sorted(self.freshies, key=attrgetter("batch"), reverse=True)
         for batch_id, group in groupby(ordered, key=attrgetter("batch")):
             yield BatchGroup(batch_id, list(group))
