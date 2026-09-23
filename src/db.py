@@ -192,7 +192,7 @@ def get_emails_for_new_batch(campaign_id: int) -> str | None:
         return None
     connection = db_ready()
     cursor = connection.cursor()
-    new_batch_id = cursor.execute("SELECT COALESCE(MAX(paste_id), 0) FROM campaigns_sent_instances").fetchone()[0]
+    new_batch_id = cursor.execute("SELECT COALESCE(MAX(paste_id), 0) FROM campaigns_sent_instances").fetchone()[0] + 1
     
     rows = [(campaign_id, freshie.id, new_batch_id) for freshie in not_sent_to]
     cursor.executemany("""--sql
