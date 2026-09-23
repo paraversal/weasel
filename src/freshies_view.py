@@ -46,7 +46,7 @@ class FreshiesView(Widget):
 
     def on_mount(self) -> None:
         self.weasel_app = cast("WeaselApp", self.app)
-        self.freshies = self.weasel_app.freshies
+        self.freshies = sorted(self.weasel_app.freshies, key=lambda freshie: freshie.last_name)
         self.watch(self.weasel_app, "freshies", self._on_source_changed)
         table = self.query_one("#freshie_table", DataTable)
         table.add_columns(
@@ -57,7 +57,7 @@ class FreshiesView(Widget):
         )
     
     def _on_source_changed(self, freshies: list[Freshie]) -> None:
-        self.freshies = freshies
+        self.freshies = sorted(freshies, key=lambda freshie: freshie.last_name)
         self.populate_table()
 
     def populate_table(self) -> None:
