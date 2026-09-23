@@ -56,5 +56,7 @@ class CampaignSendBatchesView(VerticalScroll):
     def compose(self) -> ComposeResult:
         if self.all_sent_batches == {}:
             yield Markdown("# No copies so far!")
-        for copy_id, (campaign, group) in self.all_sent_batches.items():
+            return
+        #ordered = sorted(self.freshies, key=attrgetter("batch"), reverse=True)   
+        for copy_id, (campaign, group) in reversed(self.all_sent_batches.items()):
             yield SendBatchGroup(copy_id=str(copy_id), campaign=campaign, freshies=list(group))
