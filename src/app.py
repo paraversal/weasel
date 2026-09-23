@@ -128,7 +128,7 @@ class WeaselApp(App):
         filters = Filters((".xlsx", lambda p: p.suffix.lower() == ".xlsx"))
         if opened := await self.push_screen_wait(FileOpen(title="Select freshie table file", filters=filters)):
             number_extracted = extract_freshies(opened)
-            self.notify(f"{number_extracted} freshies extracted!!! {"The family is groooowing!!" if number_extracted > 1 else "Well at least we didn't shrink!!!"}")            
+            self.notify(f"{number_extracted} freshies extracted!!! {"The family is groooowing!!" if number_extracted > 0 else "Well at least we didn't shrink!!!"}")            
             self.post_message(DataInvalidated("freshies"))
             self.post_message(DataInvalidated("campaigns"))
 
