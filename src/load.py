@@ -10,12 +10,13 @@ def extract_freshies(filename: Path) -> int:
     freshies = []
     for _, row in excel.iterrows():
         freshies.append(Freshie(
-            _id=0,
+            id="0",
             first_name=row["VORNAME"],
             last_name=row["NACHNAME"],
             email=row["EMAIL"],
             date_added=str(datetime.datetime.today()),
-            batch_id=None
+            batch=0,
+            removed=False
         ))
     number_freshies_added = add_freshies(freshies)
     return number_freshies_added

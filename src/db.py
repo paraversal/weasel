@@ -5,6 +5,12 @@ from src.campaign import Campaign
 DB_PATH = "weasel_lair.db"
 
 def db_ready() -> sqlite3.Connection:
+    """
+    Initiates DB connection and create tables (if they don't already exist). The DB is stored at a fixed path (./weasel_lair.db)
+    
+    Returns:
+        sqlite3.Connection: Connection object to the DB
+    """
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
     tables = [
@@ -23,6 +29,7 @@ def db_ready() -> sqlite3.Connection:
         email TEXT NOT NULL,
         date_added TEXT NOT NULL,
         batch_id INTEGER NOT NULL,
+        removed BOOLEAN NOT NULL,
         UNIQUE(email)
         );""",
         f"""--sql
@@ -52,7 +59,9 @@ def db_ready() -> sqlite3.Connection:
     return connection
 
 def add_freshies(freshies: list[Freshie]) -> int:
-    """Add all freshies that do not exist yet to the db. Returns number of freshies added."""
+    """Add all freshies that do not exist yet to the db. Returns number of freshies added.
+    """
+    # TODO: conflict resolution/upsert
     connection = db_ready()
     cursor = connection.cursor()
     count_added = 0
