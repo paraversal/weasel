@@ -6,7 +6,7 @@ from textual.widgets import Footer, Header, TabbedContent, Markdown, TabPane
 
 from src.home import manual_doc
 from src.sends_view import CampaignSendBatchesView
-from src.batch_view import FreshiesByBatch
+from src.adds_view import FreshiesByBatch
 from src.messages import DataInvalidated
 from src.freshies_view import FreshiesView
 from src.load import extract_freshies
