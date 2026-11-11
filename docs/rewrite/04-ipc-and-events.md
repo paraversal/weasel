@@ -4,6 +4,9 @@ The IPC boundary is the public API of the desktop app. It is defined in Rust, ex
 TypeScript, and committed. The frontend imports generated names and payload types; it
 never hand-writes an invoke name.
 
+**Status:** IPC surface implemented (apiVersion `0.2.0`) — see `04-exec.md` §10 for the
+execution log and §8 for every deviation from the plan below.
+
 ## Conventions
 
 - Command names are `<feature>_<verb>` in snake_case: `contacts_list`,
@@ -20,6 +23,149 @@ never hand-writes an invoke name.
   client-generated ids; the backend owns identity.
 - Timestamps are Unix milliseconds UTC in both directions.
 
+## Contract as executed
+
+The command list below is generated from `commands::builder()` and the DTOs from
+`desktop/src-tauri/src/commands/dto.rs`; `desktop/src/lib/ipc/bindings.ts` is committed.
+
+### Deviations from the planning docs
+
+These are the same 13 deviations recorded in `04-exec.md` §8.
+
+| # | Doc said | Executed | Why |
+| --- | --- | --- | --- |
+| 1 | `revision` inside each event variant | Envelope `WeaselEvent {revision, event}` on `weasel-event` | Shipped by 02-exec; one place to dedupe |
+| 2 | Preview takes a path directly | Added `imports_inspect` (no draft) | Incomplete mapping has no other way to show headers |
+| 3 | `imports_preview {path, mapping?, scope}` | Added `sheet?`, `progressId?`, `replacesBatchId?` | Sheet choice, progress correlation, no draft pile-up |
+| 4 | Any path accepted | Only paths returned by `imports_pick_source` | Webview must not read arbitrary files |
+| 5 | `campaigns_audience` → `Page<ContactDto>` | `PageDto<AudienceMemberDto>` | Sent rows are snapshots, possibly of deleted contacts |
+| 6 | `campaigns_prepare_send {campaignId}` → `{…, copied}` | Added `expectedCount?`; no `copied` | Guarantees "exactly the previewed set"; success implies copied |
+| 7 | `ContactDetailDto` flattens the contact | Nested `contact` | Specta flatten is fragile |
+| 8 | `limit`/`offset` required | Optional, default 100/0 | Deserialization errors bypass `AppError` (§4.3) |
+| 9 | `ImportProgress.phase` `parsing` | `reading` | Core `ImportPhase` |
+| 10 | `ImportFinished.status` `failed` | `applied`/`discarded` only | A failed apply leaves the draft; the error is the response |
+| 11 | No hard delete commands | `contacts_delete`, `campaigns_delete` (guarded) | 06 phase 4; owner default §2.2 |
+| 12 | Audit timeline unspecified | `activity_list`/`activity_recent` | 06 phase 4 activity timeline |
+| 13 | `send_batches_get` → `SendBatchDetailDto` | `SendBatchDto`; recipients paged separately | Batches can hold thousands of recipients |
+
+### App, settings and search
+
+| Command | Request | Response |
+| --- | --- | --- |
+| `app_info` | — | `{ name, version, tauriVersion, apiVersion, dbPath, dataDir }` |
+| `app_health` | — | `{ dbOk, schemaVersion, contactCount, pendingImports, bootError }` |
+| `app_features` | — | `FeatureDescriptorDto[]` (`{ id, title, commands, events }`) |
+| `app_backup_create` | — | `{ path, bytes, createdAt }` |
+| `app_open_data_dir` | — | `void` |
+| `settings_get_all` | — | `{ theme, featureFlags }` |
+| `settings_update` | `{ patch: { theme?, featureFlags? } }` | `{ theme, featureFlags }` |
+| `search_global` | `{ term, limit? }` | `{ contacts, campaigns, sendBatches }` |
+
+`search_global` trims `term`; a blank term returns three empty arrays without touching the
+database. `limit` defaults to 5 and is clamped to 1..=20. `app_info` and `app_health` work
+even when boot failed, so a bug report can include the database path and error.
+
+### Contacts
+
+| Command | Request | Response |
+| --- | --- | --- |
+| `contacts_list` | `{ search?, statuses?, importBatchId?, sort?, limit?, offset? }` | `PageDto<ContactDto>` |
+| `contacts_get` | `{ id }` | `{ contact, emailHistory, campaigns, metadata }` |
+| `contacts_create` | `{ firstName, lastName, email, notes? }` | `ContactDto` (source `manual`) |
+| `contacts_update` | `{ id, version, firstName?, lastName?, email?, notes? }` | `ContactDto` |
+| `contacts_set_status` | `{ id, version, status }` | `ContactDto` |
+| `contacts_delete` | `{ id, version }` | `void` |
+| `contacts_stats` | — | `{ active, removed, archived, total, byBatch: [{ batchId, sourceName, count }] }` |
+
+Default list statuses are `active` and `removed`; archived contacts are opt-in. Email
+changes through `contacts_update` append `contact_email_history`. Validation rejects an
+email already used by another live contact with `CONFLICT`. `contacts_delete` is a hard
+delete guarded by version and ownership rules; it is not a cascade for send history.
+
+### Campaigns
+
+| Command | Request | Response |
+| --- | --- | --- |
+| `campaigns_list` | `{ status?, search?, limit?, offset? }` | `PageDto<CampaignSummaryDto>` |
+| `campaigns_get` | `{ id }` | `CampaignDto` |
+| `campaigns_create` | `{ name, description?, subject?, body? }` | `CampaignDto` |
+| `campaigns_update` | `{ id, version, name?, description?, subject?, body? }` | `CampaignDto` |
+| `campaigns_set_status` | `{ id, version, status }` | `CampaignDto` |
+| `campaigns_delete` | `{ id, version }` | `void` |
+| `campaigns_stats` | `{ id }` | `{ total, sent, unsent, removed, lastBatchAt }` |
+| `campaigns_audience` | `{ campaignId, filter: 'sent'\|'unsent'\|'all', search?, limit?, offset? }` | `PageDto<AudienceMemberDto>` |
+| `campaigns_prepare_send` | `{ campaignId, expectedCount? }` | `{ batchId, recipientCount, emails }` |
+
+`campaigns_prepare_send` selects active contacts with no send record for the campaign,
+writes the clipboard, records one `send_batches` row plus one `send_records` row per
+recipient, and returns the batch. `expectedCount` is compared after selection; a mismatch
+returns `CONFLICT` with "review the audience again", so a stale preview cannot send.
+Clipboard failure returns `IO`, records nothing and emits no event. No unsent contacts is
+`INVALID_STATE`. `CampaignSummaryDto` carries the campaign and its stats from one batched
+query per page.
+
+### Send history
+
+| Command | Request | Response |
+| --- | --- | --- |
+| `send_batches_list` | `{ campaignId?, search?, limit?, offset? }` | `PageDto<SendBatchDto>` |
+| `send_batches_get` | `{ id }` | `SendBatchDto` |
+| `send_batches_recipients` | `{ id, search?, limit?, offset? }` | `PageDto<SendRecordDto>` |
+| `send_batches_recopy` | `{ id }` | `{ batchId, recipientCount, emails }` |
+| `send_batches_set_note` | `{ id, note }` | `SendBatchDto` |
+
+`SendRecordDto` includes the snapshotted `firstName`, `lastName`, `email`, `status` and
+optional `contactId`, so history remains correct after contact edits/removals.
+
+### Imports
+
+| Command | Request | Response |
+| --- | --- | --- |
+| `imports_pick_source` | — | `SourceFileDto \| null` (`path`, `name`, `kind`, `bytes`) |
+| `imports_inspect` | `{ path, sheet? }` | `SourceInspectionDto` (headers, suggested mapping, first 10 sample rows, count) |
+| `imports_preview` | `{ path, sheet?, mapping?, scope, progressId?, replacesBatchId? }` | `ImportPreviewDto` |
+| `imports_apply` | `{ batchId, resolutions, progressId? }` | `ImportBatchDto` |
+| `imports_discard` | `{ batchId }` | `ImportBatchDto` |
+| `imports_list` | `{ status?, limit?, offset? }` | `PageDto<ImportBatchDto>` |
+| `imports_get` | `{ batchId, limit?, offset? }` | `{ batch, members: PageDto<ContactDto> }` |
+| `imports_plan_rows` | `{ batchId, limit?, offset? }` | `PageDto<PlannedRowDto>` |
+
+`imports_pick_source` is the only command that grants read access: it canonicalizes the
+dialog path and inserts it into `PickedSources`. Every path-taking import command calls
+`ensure_picked`, which canonicalizes and returns
+`VALIDATION {field: "path", reason: "Choose the file again"}` for anything else.
+`imports_preview` creates a `draft` batch and persists its plan; re-preview with
+`replacesBatchId` discards the old draft and adds a `sameFileAsBatch` warning when the
+file hash matches. `imports_apply` re-validates the draft and applies non-conflicting
+actions plus the caller's resolutions in one transaction; unresolved conflicts are
+`INVALID_STATE`. `imports_plan_rows` rejects a discarded batch and reads the stored plan;
+applied imports keep their plan for review.
+
+`ImportPreviewDto` contains `batch`, `headers`, `headerRow`, `suggestedMapping`,
+`mapping`, `summary`, `sample`, `conflicts`, `errors`, `warnings` and `removals`.
+Conflict resolution:
+
+```ts
+type ConflictResolutionDto = {
+  row: number;                       // source row index
+  action: "linkContact" | "createNew" | "skip";
+  contactId?: number;                // required for linkContact
+};
+```
+
+`ImportSummaryDto` is `{ rowCount, added, updated, removed, conflicts, unchanged,
+invalid }`.
+
+### Activity
+
+| Command | Request | Response |
+| --- | --- | --- |
+| `activity_recent` | `{ limit?, offset? }` | `PageDto<AuditEventDto>` |
+| `activity_list` | `{ entityType, entityId, limit?, offset? }` | `PageDto<AuditEventDto>` |
+
+`AuditEventDto` is `{ id, at, actor, action, entityType, entityId, before, after,
+metadata }`. Activity is read-only; audit rows are append-only.
+
 ## Type generation
 
 `desktop/src-tauri/src/bindings.rs` builds a `tauri_specta::Builder`, registers exactly
@@ -30,29 +176,6 @@ the same command list as `lib.rs`, and exports:
 
 The generated file is committed. CI runs the exporter and fails if `git diff` is dirty,
 so a backend signature change cannot merge without regenerating the frontend types.
-
-```rust
-// sketch
-pub fn export() -> Result<(), Box<dyn std::error::Error>> {
-    tauri_specta::Builder::<tauri::Wry>::new()
-        .commands(tauri_specta::collect_commands![
-            app_info,
-            contacts_list,
-            contacts_get,
-            // ...
-        ])
-        .events(tauri_specta::collect_events![DomainEvent])
-        .export(
-            specta_typescript::Typescript::default()
-                .header("// @generated by `pnpm bindings` — do not edit"),
-            "../src/lib/ipc/bindings.ts",
-        )?;
-    Ok(())
-}
-```
-
-`package.json` exposes `pnpm bindings` → `cargo run --manifest-path src-tauri/Cargo.toml
---bin export-bindings`.
 
 ## Errors
 
@@ -87,7 +210,7 @@ export type AppError = {
   code: "VALIDATION" | "NOT_FOUND" | "CONFLICT" | "INVALID_STATE"
       | "IO" | "IMPORT" | "CANCELLED" | "INTERNAL";
   message: string;
-  details?: unknown;
+  details?: Value;
   retryable: boolean;
 };
 ```
@@ -100,18 +223,19 @@ export type AppError = {
 
 The client wrapper turns a rejected invoke into `AppError`, surfaces `VALIDATION` on the
 matching form field, shows `CONFLICT` as a "changed elsewhere, reload" dialog, and toasts
-`INTERNAL` with a log id.
+`INTERNAL` with a log id. Mock handlers throw the same plain object, so `typedError`
+behaves identically in `VITE_IPC_MOCK=1`.
 
 ## Shared DTOs
 
 ```rust
 #[derive(Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub struct Page<T> {
+pub struct PageDto<T> {
     pub items: Vec<T>,
     pub total: i64,
-    pub offset: i64,
-    pub limit: i64,
+    pub offset: u32,
+    pub limit: u32,
 }
 
 #[derive(Serialize, specta::Type)]
@@ -121,8 +245,8 @@ pub struct ContactDto {
     pub first_name: String,
     pub last_name: String,
     pub email: String,
-    pub status: ContactStatus,        // active | removed | archived
-    pub source: ContactSource,        // import | manual | api
+    pub status: ContactStatus,
+    pub source: ContactSource,
     pub import_batch_id: Option<i64>,
     pub date_added: i64,
     pub updated_at: i64,
@@ -133,214 +257,86 @@ pub struct ContactDto {
 #[derive(Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ContactDetailDto {
-    #[serde(flatten)]
     pub contact: ContactDto,
     pub email_history: Vec<EmailHistoryDto>,
-    pub campaigns_sent: Vec<CampaignSentRefDto>,
+    pub campaigns: Vec<CampaignReceiptDto>,
     pub metadata: serde_json::Value,
 }
 ```
 
-Query structs:
+Contacts list request:
 
 ```rust
 #[derive(Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub struct ContactQuery {
+pub struct ContactListRequest {
     pub search: Option<String>,
-    pub status: Option<Vec<ContactStatus>>,
+    pub statuses: Option<Vec<ContactStatus>>,
     pub import_batch_id: Option<i64>,
-    pub sort: ContactSort,            // lastNameAsc | lastNameDesc | addedDesc | emailAsc
-    pub limit: u32,
-    pub offset: u32,
+    pub sort: Option<ContactSort>,    // lastNameAsc | lastNameDesc | addedDesc | emailAsc
+    pub limit: Option<u32>,
+    pub offset: Option<u32>,
 }
 ```
 
-## Command surface (v1)
-
-### App and settings
-
-| Command | Request | Response |
-| --- | --- | --- |
-| `app_info` | — | `{ name, version, tauriVersion, apiVersion, dbPath, dataDir }` |
-| `app_health` | — | `{ dbOk, schemaVersion, contactCount, pendingImports }` |
-| `app_backup_create` | — | `{ path, bytes, createdAt }` |
-| `app_open_data_dir` | — | `void` |
-| `app_import_legacy_db` | `{ path }` | `{ contacts, campaigns, sendBatches, sendRecords, warnings }` |
-| `settings_get_all` | — | `SettingsDto` |
-| `settings_update` | `{ patch: SettingsPatch }` | `SettingsDto` |
-
-> **Premise change (2026-11-11):** no legacy data support — see
-> [ADR 0006](../adr/0006-clean-rewrite-no-legacy-data.md). `app_import_legacy_db` is
-> dropped; it is not part of the command surface.
-
-### Contacts (the "Freshies" screens)
-
-| Command | Request | Response |
-| --- | --- | --- |
-| `contacts_list` | `ContactQuery` | `Page<ContactDto>` |
-| `contacts_get` | `{ id }` | `ContactDetailDto` |
-| `contacts_create` | `{ firstName, lastName, email, notes? }` | `ContactDto` (source `manual`) |
-| `contacts_update` | `{ id, version, firstName?, lastName?, email?, notes? }` | `ContactDto` |
-| `contacts_set_status` | `{ id, version, status }` | `ContactDto` |
-| `contacts_stats` | — | `{ active, removed, archived, total, byBatch: [{ batchId, name, count }] }` |
-
-Email changes through `contacts_update` append `contact_email_history`. Validation rejects
-an email already used by another live contact with `CONFLICT`.
-
-### Campaigns
-
-| Command | Request | Response |
-| --- | --- | --- |
-| `campaigns_list` | `{ status?, search?, limit, offset }` | `Page<CampaignSummaryDto>` |
-| `campaigns_get` | `{ id }` | `CampaignDto` |
-| `campaigns_create` | `{ name, description?, subject?, body? }` | `CampaignDto` |
-| `campaigns_update` | `{ id, version, name?, description?, subject?, body? }` | `CampaignDto` |
-| `campaigns_set_status` | `{ id, version, status }` | `CampaignDto` |
-| `campaigns_stats` | `{ id }` | `{ total, sent, unsent, removed, lastBatchAt? }` |
-| `campaigns_audience` | `{ campaignId, filter: 'sent'|'unsent'|'all', search?, limit, offset }` | `Page<ContactDto>` |
-| `campaigns_prepare_send` | `{ campaignId }` | `{ batchId, recipientCount, emails, copied }` |
-
-`campaigns_prepare_send` is the replacement for "copy all": it selects active contacts
-with no send record for the campaign, writes the clipboard, records a `send_batches` row
-and one `send_records` row per recipient, and returns the batch. If there are no unsent
-contacts it returns `INVALID_STATE` with a friendly message, matching the current
-"nothing to copy" case.
-
-### Send history ("Copies")
-
-| Command | Request | Response |
-| --- | --- | --- |
-| `send_batches_list` | `{ campaignId?, search?, limit, offset }` | `Page<SendBatchDto>` |
-| `send_batches_get` | `{ id }` | `SendBatchDetailDto` |
-| `send_batches_recipients` | `{ id, search?, limit, offset }` | `Page<SendRecordDto>` |
-| `send_batches_recopy` | `{ id }` | `{ batchId, recipientCount, emails, copied }` |
-| `send_batches_set_note` | `{ id, note }` | `SendBatchDto` |
-
-`SendRecordDto` includes the snapshotted `firstName`, `lastName`, `email`, `status` and
-optional `contactId`, so history remains correct after contact edits/removals.
-
-### Imports ("Adds")
-
-| Command | Request | Response |
-| --- | --- | --- |
-| `imports_pick_source` | — | `SourceFileDto \| null` (`path`, `name`, `kind`, `bytes`) |
-| `imports_preview` | `{ path, mapping?, scope: 'roster'\|'delta' }` | `ImportPreviewDto` |
-| `imports_apply` | `{ batchId, resolutions: ConflictResolutionDto[] }` | `ImportResultDto` |
-| `imports_discard` | `{ batchId }` | `void` |
-| `imports_list` | `{ status?, limit, offset }` | `Page<ImportBatchSummaryDto>` |
-| `imports_get` | `{ batchId, limit, offset }` | `ImportBatchDetailDto` |
-
-`imports_preview` creates a `draft` batch and persists `plan_json`; it is safe to abandon.
-`ImportPreviewDto` contains headers, suggested mapping, summary counts, the first 100
-planned rows and every conflict. `imports_apply` re-validates the draft, applies all
-non-conflicting actions plus the caller's conflict resolutions in one transaction, marks
-the batch `applied`, and emits events.
-
-Conflict resolution DTO:
-
-```ts
-type ConflictResolutionDto = {
-  row: number;                       // source row index
-  action: "linkContact" | "createNew" | "skip";
-  contactId?: number;                // required for linkContact
-};
-```
-
-### Global search
-
-| Command | Request | Response |
-| --- | --- | --- |
-| `search_global` | `{ term, limit }` | `{ contacts, campaigns, sendBatches }` |
-
-Small, bounded result lists for the command palette. Deep filtering stays on the
-dedicated list commands.
+Every mutation wrapper returns the DTO and emits its events only after the service commits.
+The wrapper emits `Emitted { value, events }`; the exported command returns `value`.
 
 ## Events
 
-There is one multiplexed Tauri event channel, `weasel://event`, carrying a typed union.
-A single channel means new features do not need new capabilities or frontend listeners.
-A monotonically increasing `revision` lets the frontend drop stale out-of-order events.
+There is one multiplexed Tauri event channel, `weasel-event`, carrying an envelope with a
+typed union and a monotonically increasing revision:
 
 ```rust
 #[derive(Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WeaselEvent {
+    pub revision: u64,
+    pub event: DomainEvent,
+}
+
+#[derive(Clone, Serialize, specta::Type)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum DomainEvent {
-    ContactsChanged { revision: u64 },
-    CampaignsChanged { revision: u64 },
-    SendBatchesChanged { revision: u64 },
-    ImportsChanged { revision: u64 },
-    SettingsChanged { revision: u64, keys: Vec<String> },
+    SettingsChanged { keys: Vec<String> },
+    OperationFailed { operation: String, error: AppError },
+    ContactsChanged,
+    CampaignsChanged,
+    SendBatchesChanged,
+    ImportsChanged,
     ImportProgress {
-        revision: u64,
-        job_id: String,
-        phase: String,          // "parsing" | "matching" | "applying"
+        progress_id: String,
+        phase: ImportPhase,          // reading | matching | applying
         processed: u64,
         total: u64,
     },
     ImportFinished {
-        revision: u64,
         batch_id: i64,
-        status: String,         // "applied" | "failed" | "discarded"
-    },
-    OperationFailed {
-        revision: u64,
-        operation: String,
-        error: AppError,
+        status: ImportStatus,        // applied | discarded
     },
 }
 ```
 
-Frontend mapping, in `src/lib/ipc/events.ts`:
+The revision is stored in an `AtomicU64` in `AppState` and incremented with `fetch_add`;
+the frontend drops envelopes whose revision it has already seen. A new event variant is
+a TypeScript build error until `events.ts` lists its invalidations.
+
+Frontend mapping, in `desktop/src/lib/ipc/events.ts`:
 
 | Event | Invalidate |
 | --- | --- |
-| `contactsChanged` | `['contacts']`, `['contacts','stats']`, `['campaigns','audience']` |
-| `campaignsChanged` | `['campaigns']`, `['campaigns','stats']` |
-| `sendBatchesChanged` | `['send-batches']`, `['campaigns','audience']` |
-| `importsChanged` | `['imports']`, `['contacts','stats']` |
-| `settingsChanged` | `['settings']`, theme store if relevant |
-| `importProgress` | update the import progress store, no invalidation |
-| `importFinished` | invalidate imports + contacts, close progress |
-| `operationFailed` | toast + log |
+| `contactsChanged` | `['contacts']`, `['campaigns']`, `['search']`, `['activity']`, app health |
+| `campaignsChanged` | `['campaigns']`, `['search']`, `['activity']` |
+| `sendBatchesChanged` | `['sendBatches']`, `['campaigns']`, `['contacts','detail']`, `['search']`, `['activity']` |
+| `importsChanged` | `['imports']`, app health, `['activity']` |
+| `settingsChanged` | `['settings']` |
+| `importProgress` | no invalidation; `onEvent` updates the progress store |
+| `importFinished` | `['imports']`, `['contacts']`, `['campaigns']`, app health |
+| `operationFailed` | toast + log; passed to `onFailed`, not `onEvent` |
 
-The backend emits an event after a successful commit, never before. The revision is
-stored in an `AtomicU64` in `AppState` and incremented with `fetch_add`.
-
-## Example: a complete command
-
-```rust
-// desktop/src-tauri/src/commands/contacts.rs
-#[tauri::command]
-#[specta::specta]
-pub async fn contacts_list(
-    state: tauri::State<'_, AppState>,
-    query: ContactQuery,
-) -> Result<Page<ContactDto>, AppError> {
-    let query = query.validate()?;               // caps limit, checks sort enum
-    let page = state.contacts.list(query).await?; // application service
-    Ok(page.into())
-}
-```
-
-```ts
-// frontend usage
-import { commands, type ContactQuery } from "$lib/ipc/bindings";
-import { createQuery } from "@tanstack/svelte-query";
-
-const query: ContactQuery = {
-  search: term || undefined,
-  status: ["active"],
-  sort: "lastNameAsc",
-  limit: 100,
-  offset: 0,
-};
-
-const contacts = createQuery({
-  queryKey: ["contacts", query],
-  queryFn: async () => unwrap(await commands.contactsList(query)),
-});
-```
+`startEventBridge(queryClient, onFailed, onEvent?)` returns its disposer. `onEvent`
+receives every accepted event after invalidation, which is where the import wizard builds
+progress state.
 
 ## Compatibility policy
 
@@ -348,7 +344,8 @@ const contacts = createQuery({
 - Renaming/removing a command or changing a field type is breaking: add a new command
   (for example `contacts_list_v2`) and keep the old one for one release, or accept the
   coordinated breaking change while the app is pre-1.0.
-- `app_info.apiVersion` follows semantic versioning for the IPC surface.
+- `app_info.apiVersion` follows semantic versioning for the IPC surface; this surface is
+  `0.2.0` after `app_backup_create` and the final import command set.
 - Events are treated as an open union in TypeScript (`default: ignore`) so an older
   frontend tolerates an unknown event during development.
 - Database migrations have their own monotonic version; `app_health.schemaVersion`

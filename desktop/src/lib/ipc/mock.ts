@@ -79,7 +79,7 @@ const features: FeatureDescriptorDto[] = [
 		events: ['campaignsChanged', 'sendBatchesChanged']
 	},
 	{
-		id: 'send_batches',
+		id: 'send-batches',
 		title: 'Send batches',
 		commands: [
 			'send_batches_list',

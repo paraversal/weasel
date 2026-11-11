@@ -705,6 +705,31 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn audience_pages_and_searches() {
+        let harness = harness().await;
+        let campaign = active(&harness, "Spring").await;
+        seed_contact(&harness, "Ada", "Lovelace", "ada@example.com").await;
+        seed_contact(&harness, "Grace", "Hopper", "grace@example.com").await;
+        seed_contact(&harness, "Ada", "Byron", "ada.byron@example.com").await;
+
+        let request = |offset| CampaignAudienceRequest {
+            campaign_id: campaign.id,
+            filter: AudienceFilterDto::Unsent,
+            search: Some("ada".to_owned()),
+            limit: Some(1),
+            offset: Some(offset),
+        };
+        let first = audience(&harness.services, request(0)).await.unwrap();
+        let second = audience(&harness.services, request(1)).await.unwrap();
+
+        assert_eq!(first.total, 2);
+        assert_eq!(first.items.len(), 1);
+        assert_eq!(second.items.len(), 1);
+        assert_ne!(first.items[0].contact_id, second.items[0].contact_id);
+        assert!(first.items[0].email.contains("ada"));
+    }
+
+    #[tokio::test]
     async fn deleting_an_empty_campaign_emits_once() {
         let harness = harness().await;
         let campaign = seed_campaign(&harness, "Empty").await;

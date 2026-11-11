@@ -4,8 +4,8 @@ A living checklist used to decide when the rewrite can replace the TUI. Each ite
 evidence: a passing test, a recorded manual check, or a linked artifact. Do not check an
 item because the code exists.
 
-Status: **phase 2 (data core) implemented** — see [03-exec.md](03-exec.md); phases 3–7
-not started (read/write/reconciliation UI is phase 3–5). Phase numbers refer to
+Status: **IPC surface implemented** — see [04-exec.md](04-exec.md); phases 3–7 UI work
+is not started (read/write/reconciliation UI is phase 3–5). Phase numbers refer to
 [06-delivery-plan.md](06-delivery-plan.md).
 
 > **Premise change (2026-11-11):** no legacy data support — see
@@ -71,16 +71,26 @@ not started (read/write/reconciliation UI is phase 3–5). Phase numbers refer t
 - [ ] Contact detail shows email history and campaigns received.
 - [ ] Campaigns list/detail shows sent, unsent and total audience.
 - [ ] Campaign audience tabs paginate and search.
+      Evidence (IPC): `commands::campaigns::tests::audience_pages_and_searches`.
 - [ ] Send history lists batches newest-first and searches recipients/notes.
 - [ ] Batch detail shows snapshotted recipients.
 - [ ] Imports list shows source, status and counts; batch detail lists members.
 - [ ] Global command-palette search finds contacts, campaigns and batches.
+      Evidence (IPC): `commands::search::tests::one_term_matches_every_kind`,
+      `commands::search::tests::a_blank_term_returns_nothing`,
+      `commands::search::tests::limit_is_clamped_to_twenty`.
 
 ## Write parity (phase 4)
 
 - [ ] Create/edit/archive campaign with validation and version conflict handling.
+      Evidence (IPC): `commands::contacts::tests::stale_versions_conflict_and_missing_contacts_are_not_found`
+      (optimistic `version` check returns `CONFLICT`), `commands::campaigns::tests::update_and_status_are_audited_changes`.
 - [ ] Prepare send previews recipients and disables when none are unsent.
+      Evidence (IPC): `commands::campaigns::tests::audience_sent_uses_the_snapshot`,
+      `commands::campaigns::tests::draft_campaign_cannot_send`.
 - [ ] Prepare send writes exactly the previewed addresses to the clipboard.
+      Evidence (IPC): `commands::campaigns::tests::prepare_with_the_reviewed_count_copies_and_emits`,
+      `commands::campaigns::tests::wrong_reviewed_count_leaves_no_batch`.
 - [ ] Prepare send creates one batch and one immutable record per recipient.
       Evidence (backend): `sends::prepare_send_copies_before_commit_and_is_not_repeatable`,
       `schema::send_record_snapshot_is_immutable`.
@@ -102,7 +112,11 @@ not started (read/write/reconciliation UI is phase 3–5). Phase numbers refer t
 - [ ] Every mutation writes an audit event.
       Evidence (backend): `import::apply::each_operation_and_the_apply_are_audited`,
       `sends::campaign_edit_is_audited`, `contacts::email_change_closes_history_and_is_audited`.
-- [ ] Backend events invalidate the right queries without full reloads.
+- [x] Backend events invalidate the right queries without full reloads.
+      Evidence: [`desktop/src/lib/ipc/events.test.ts`](../../desktop/src/lib/ipc/events.test.ts)
+      ("invalidates contact lists but never settings", "passes importProgress to onEvent");
+      [`desktop/src/lib/ipc/events.ts`](../../desktop/src/lib/ipc/events.ts) has an exhaustive
+      `satisfies Record<EventType, …>` map; the mock emits the same `WeaselEvent` envelope.
 
 ## Reconciliation (phase 5)
 
@@ -132,6 +146,9 @@ not started (read/write/reconciliation UI is phase 3–5). Phase numbers refer t
 - [ ] Light/dark themes meet contrast checks.
 - [ ] Destructive actions require confirmation; history has no delete action.
 - [ ] Diagnostics exposes versions, schema, DB path, logs, backup and open-folder.
+      Evidence (IPC): `app_info`, `app_health`, `app_backup_create` and `app_open_data_dir`
+      exist (`commands::app::tests::backup_writes_a_non_empty_file`); the diagnostics screen
+      is phase 6 UI work.
 - [ ] Errors provide a next step and never fail silently.
 
 ## Release (phase 7)
