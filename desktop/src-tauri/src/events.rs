@@ -10,11 +10,12 @@ use serde::Serialize;
 use tauri::AppHandle;
 use tauri_specta::Event;
 
+use crate::commands::dto::{ImportPhaseDto, ImportStatusDto};
 use crate::error::AppError;
 
 /// Wire contract: the enum is exported to TypeScript in full, so a variant can exist
 /// before the feature that emits it lands.
-#[derive(Debug, Clone, Serialize, specta::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum DomainEvent {
     SettingsChanged {
@@ -25,8 +26,28 @@ pub enum DomainEvent {
         operation: String,
         error: AppError,
     },
-    // Later exec plans add: ContactsChanged, CampaignsChanged, SendBatchesChanged,
-    // ImportsChanged, ImportProgress, ImportFinished.
+    #[allow(dead_code)]
+    ContactsChanged {},
+    #[allow(dead_code)]
+    CampaignsChanged {},
+    #[allow(dead_code)]
+    SendBatchesChanged {},
+    #[allow(dead_code)]
+    ImportsChanged {},
+    #[allow(dead_code)]
+    ImportProgress {
+        #[serde(rename = "progressId")]
+        progress_id: String,
+        phase: ImportPhaseDto,
+        processed: u64,
+        total: u64,
+    },
+    #[allow(dead_code)]
+    ImportFinished {
+        #[serde(rename = "batchId")]
+        batch_id: i64,
+        status: ImportStatusDto,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type, tauri_specta::Event)]

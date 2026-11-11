@@ -10,22 +10,23 @@ mod state;
 pub use bindings::export as export_bindings;
 pub use commands::feature_descriptors;
 
+use std::collections::HashSet;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use tauri::{AppHandle, Manager};
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use weasel_core::campaign::CampaignService;
 use weasel_core::contact::ContactService;
 use weasel_core::identity::NameIdentity;
-use weasel_core::ports::{AuditRepository, Clipboard, Clock, SettingsRepository};
+use weasel_core::ports::{AuditRepository, Clipboard, Clock, FileDialog, SettingsRepository};
 use weasel_core::send::SendService;
 use weasel_core::settings::SettingsService;
 use weasel_import::service::ImportService;
 use weasel_platform::{DataPaths, SystemClock};
 use weasel_store::{
     OpenOptions, SqliteAudit, SqliteCampaigns, SqliteContacts, SqliteImports, SqliteSends,
-    SqliteSettings,
+    SqliteSettings, Store,
 };
 
 use crate::adapters::{TauriClipboard, TauriFileDialog};
@@ -101,6 +102,7 @@ fn boot(app: &AppHandle, paths: DataPaths) {
         paths,
         boot,
         events: EventBus::new(),
+        picked_sources: Mutex::new(HashSet::new()),
     });
 }
 
@@ -142,7 +144,22 @@ fn open_services(app: &AppHandle, paths: &DataPaths) -> Result<Services, BootErr
         "database ready"
     );
 
-    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+    Ok(compose(
+        store,
+        Arc::new(SystemClock),
+        Arc::new(TauriClipboard::new(app.clone())),
+        Arc::new(TauriFileDialog::new(app.clone())),
+    ))
+}
+
+/// Wires every service to one store and the injected ports. Pure: tests call it with
+/// a `TempDb`, `FixedClock`, `FakeClipboard` and `FakeFileDialog`.
+pub(crate) fn compose(
+    store: Store,
+    clock: Arc<dyn Clock>,
+    clipboard: Arc<dyn Clipboard>,
+    dialogs: Arc<dyn FileDialog>,
+) -> Services {
     let identity = Arc::new(NameIdentity);
     let settings = SettingsService::new(
         Arc::new(SqliteSettings::new(store.clone())) as Arc<dyn SettingsRepository>,
@@ -157,7 +174,6 @@ fn open_services(app: &AppHandle, paths: &DataPaths) -> Result<Services, BootErr
         Arc::new(SqliteCampaigns::new(store.clone())),
         Arc::clone(&clock),
     );
-    let clipboard: Arc<dyn Clipboard> = Arc::new(TauriClipboard::new(app.clone()));
     let sends = SendService::new(
         Arc::new(SqliteSends::new(store.clone())),
         Arc::clone(&clipboard),
@@ -170,7 +186,7 @@ fn open_services(app: &AppHandle, paths: &DataPaths) -> Result<Services, BootErr
     );
     let audit: Arc<dyn AuditRepository> = Arc::new(SqliteAudit::new(store.clone()));
 
-    Ok(Services {
+    Services {
         store,
         settings,
         contacts,
@@ -180,6 +196,6 @@ fn open_services(app: &AppHandle, paths: &DataPaths) -> Result<Services, BootErr
         audit,
         clock,
         clipboard,
-        dialogs: Arc::new(TauriFileDialog::new(app.clone())),
-    })
+        dialogs,
+    }
 }

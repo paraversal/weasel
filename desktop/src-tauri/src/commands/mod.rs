@@ -6,7 +6,10 @@
 use weasel_core::FeatureDescriptor;
 
 pub mod app;
+pub mod dto;
 pub mod settings;
+#[cfg(test)]
+pub mod testing;
 // @gen:modules
 
 /// Every feature registered in the backend. The developer page renders this list and
@@ -24,6 +27,7 @@ pub fn feature_descriptors() -> Vec<FeatureDescriptor> {
 pub fn builder() -> tauri_specta::Builder<tauri::Wry> {
     tauri_specta::Builder::<tauri::Wry>::new()
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
+        .typ::<dto::PageDto<app::AppInfoDto>>()
         .commands(tauri_specta::collect_commands![
             app::app_info,
             app::app_health,

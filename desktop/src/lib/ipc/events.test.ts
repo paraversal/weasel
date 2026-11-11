@@ -44,7 +44,16 @@ beforeEach(() => {
 
 describe('invalidations', () => {
 	it('covers every domain event type', () => {
-		expect(Object.keys(invalidations).sort()).toEqual(['operationFailed', 'settingsChanged']);
+		expect(Object.keys(invalidations).sort()).toEqual([
+			'campaignsChanged',
+			'contactsChanged',
+			'importFinished',
+			'importProgress',
+			'importsChanged',
+			'operationFailed',
+			'sendBatchesChanged',
+			'settingsChanged'
+		]);
 	});
 });
 

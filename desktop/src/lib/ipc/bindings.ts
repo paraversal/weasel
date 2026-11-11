@@ -92,13 +92,13 @@ export type DomainEvent = DomainEvent_Serialize | DomainEvent_Deserialize;
  *  Wire contract: the enum is exported to TypeScript in full, so a variant can exist
  *  before the feature that emits it lands.
  */
-export type DomainEvent_Deserialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Deserialize };
+export type DomainEvent_Deserialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Deserialize } | { type: "contactsChanged" } | { type: "campaignsChanged" } | { type: "sendBatchesChanged" } | { type: "importsChanged" } | { type: "importProgress"; progressId: string; phase: ImportPhaseDto; processed: number; total: number } | { type: "importFinished"; batchId: number; status: ImportStatusDto };
 
 /**
  *  Wire contract: the enum is exported to TypeScript in full, so a variant can exist
  *  before the feature that emits it lands.
  */
-export type DomainEvent_Serialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Serialize };
+export type DomainEvent_Serialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Serialize } | { type: "contactsChanged" } | { type: "campaignsChanged" } | { type: "sendBatchesChanged" } | { type: "importsChanged" } | { type: "importProgress"; progressId: string; phase: ImportPhaseDto; processed: number; total: number } | { type: "importFinished"; batchId: number; status: ImportStatusDto };
 
 /**  Machine-readable error class. The frontend switches on this, never on `message`. */
 export type ErrorCode = "VALIDATION" | "NOT_FOUND" | "CONFLICT" | "INVALID_STATE" | "IO" | 
@@ -110,6 +110,18 @@ export type FeatureDescriptorDto = {
 	title: string,
 	commands: string[],
 	events: string[],
+};
+
+export type ImportPhaseDto = "reading" | "matching" | "applying";
+
+export type ImportStatusDto = "draft" | "applied" | "failed" | "discarded";
+
+/**  A page of wire DTOs. `total` is an `i64` because JavaScript numbers are doubles. */
+export type PageDto<T> = {
+	items: T[],
+	total: number,
+	offset: number,
+	limit: number,
 };
 
 export type SettingsDto = {

@@ -13,7 +13,13 @@ type DomainEvent = WeaselEvent['event'];
  */
 export const invalidations = {
 	settingsChanged: [keys.settings],
-	operationFailed: []
+	operationFailed: [],
+	contactsChanged: [],
+	campaignsChanged: [],
+	sendBatchesChanged: [],
+	importsChanged: [],
+	importProgress: [],
+	importFinished: []
 } satisfies Record<EventType, readonly QueryKey[]>;
 
 /**

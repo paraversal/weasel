@@ -27,7 +27,7 @@ pub enum ErrorCode {
 }
 
 /// What a rejected `invoke` carries.
-#[derive(Debug, Clone, Serialize, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AppError {
     pub code: ErrorCode,

@@ -3,7 +3,11 @@
 //! Boot failure is a *state*, not a crash: the window still opens and `app_health`
 //! reports why the database is unavailable.
 
-use std::sync::Arc;
+use std::{
+    collections::HashSet,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
 use weasel_core::campaign::CampaignService;
 use weasel_core::contact::ContactService;
@@ -16,6 +20,11 @@ use weasel_store::Store;
 
 use crate::error::AppError;
 use crate::events::EventBus;
+
+/// Canonical paths the native file picker returned during this process.
+///
+/// The webview may only read sources it selected, so imports reject every other path.
+pub type PickedSources = Mutex<HashSet<PathBuf>>;
 
 /// Everything that needs a working database. Built once during setup.
 pub struct Services {
@@ -48,6 +57,8 @@ pub struct AppState {
     pub paths: DataPaths,
     pub boot: Result<Services, BootError>,
     pub events: EventBus,
+    #[allow(dead_code)] // imports commands read it in M3
+    pub picked_sources: PickedSources,
 }
 
 impl AppState {
