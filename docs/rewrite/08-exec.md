@@ -356,6 +356,8 @@ phases 6–7.
 | 13 | §5: `wizard.test.ts` | `wizard.svelte.test.ts` | Runes need the happy-dom project, which matches `*.svelte.test.ts` |
 | 14 | §1: no Rust or IPC changes | `keys.imports.detail` now takes the request | The key ignored paging, so member page 2 showed cached page 1 (TS-only fix) |
 | 15 | — | eslint `svelte/no-navigation-without-resolve` ignores links | Runtime hrefs go through `href()`/`go()` in `utils/paths.ts`, which apply the base |
+| 16 | Screens and routes called "Freshies" | Label is a setting (`audienceTerm`); route is `/contacts`, shortcut `g p` | Owner request: the word is user-customisable, so the URL stays neutral |
+| 17 | §1: no schema changes | Migration `0003_email_checks.sql` (`email_flags`, `invalid_email_rules`); bounced send records (`status = 'failed'`) no longer count as received | Owner request: invalid addresses, with wildcard rules for a recurring pattern |
 
 ## 9. Post-MVP backlog (ordered by expected value)
 
@@ -385,3 +387,7 @@ phases 6–7.
 | 2026-11-11 | Smoke feedback | Owner: email sorts one way only; sortable headers don't look clickable. Added `ContactSort::{AddedAsc, EmailDesc}` (core, store, DTO, bindings; store test extended) and button-styled headers with a ↕ hint. First Rust change in 08-exec |
 | 2026-11-11 | Owner request | Motion pass: page/step transitions, sliding nav highlight, staggered rows, FLIP reorder on Freshies sort, count-up stats, growing progress bars, popping badges, canvas confetti on send/re-copy/import/create/add. All off under `prefers-reduced-motion` (`utils/motion.ts`, base-layer CSS rule) |
 | 2026-11-11 | §7 | `pnpm verify` green. **Manual smoke not run by the executing agent**: it could not see the Tauri window. 09 UI items stay unticked until the owner runs §7 |
+| 2026-11-11 | Owner request | `753d9df` customisable term in Settings → Wording; `9866a58` drop a spreadsheet anywhere to import it (native drop handler allowlists the path) |
+| 2026-11-11 | Owner request | `539b60e` `/freshies` → `/contacts` (§8.16) |
+| 2026-11-11 | Owner request | `5f7f87d` invalid addresses (§8.17): rules with live preview, manual verdicts, bounces from campaign Sent tab and history; people on hold are left out of sends and released when an import changes their address; 6 store tests |
+| 2026-11-11 | Owner request | Weasel mascot: sidebar logo, favicon, app icons (source `src-tauri/icons/source/weasel.svg`, regenerated with `pnpm tauri icon`), and a drop overlay where the weasel tracks the cursor with its mouth open, chomps spreadsheets and spits out anything else. Not seen running by the agent |

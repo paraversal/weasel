@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 
+	import Weasel from '$lib/components/app/Weasel.svelte';
 	import { icons } from '$lib/shell/icons';
 	import type { NavItem } from '$lib/shell/nav';
 	import { resolvePath } from '$lib/utils/paths';
@@ -25,15 +26,15 @@
 	class="border-border-subtle flex w-56 shrink-0 flex-col gap-1 border-r bg-surface-raised/40 p-2 max-[1100px]:w-14"
 >
 	<div class="mb-2 flex h-9 items-center gap-2 px-2 max-[1100px]:justify-center max-[1100px]:px-0">
-		<!-- Easter egg: the dot does a flip when clicked. -->
+		<!-- Easter egg: the weasel does a flip when clicked. -->
 		<button
 			type="button"
 			aria-label="Weasel"
-			class="flex size-4 items-center justify-center transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+			class="flex size-7 shrink-0 items-center justify-center transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
 			style:transform="rotate({spins * 360}deg)"
 			onclick={() => spins++}
 		>
-			<span class="size-2 animate-breathe rounded-full bg-primary" aria-hidden="true"></span>
+			<Weasel class="size-7" />
 		</button>
 		<span class="text-sm font-semibold max-[1100px]:hidden">Weasel</span>
 	</div>
