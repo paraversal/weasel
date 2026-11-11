@@ -4,8 +4,8 @@ A living checklist used to decide when the rewrite can replace the TUI. Each ite
 evidence: a passing test, a recorded manual check, or a linked artifact. Do not check an
 item because the code exists.
 
-Status: **not started** (planning only). Phase numbers refer to
-[06-delivery-plan.md](06-delivery-plan.md).
+Status: **phase 1 implemented** (see [02-exec.md](02-exec.md)); phases 2–7 not started.
+Phase numbers refer to [06-delivery-plan.md](06-delivery-plan.md).
 
 > **Premise change (2026-11-11):** no legacy data support — see
 > [ADR 0006](../adr/0006-clean-rewrite-no-legacy-data.md). Items about importing or
@@ -14,12 +14,33 @@ Status: **not started** (planning only). Phase numbers refer to
 
 ## Foundation (phase 1)
 
-- [ ] `desktop/` SvelteKit app builds with `adapter-static` and runs in a Tauri window.
-- [ ] Rust workspace builds with format/clippy/test clean.
-- [ ] Generated IPC bindings are committed and CI checks they are current.
-- [ ] Feature registry renders navigation from manifests (no hard-coded nav).
-- [ ] `pnpm gen feature demo --nav` produces a working module without shell edits.
-- [ ] Capabilities are least-privilege; CSP blocks remote content.
+- [x] `desktop/` SvelteKit app builds with `adapter-static` and runs in a Tauri window.
+      Evidence: static adapter in [`desktop/vite.config.ts`](../../desktop/vite.config.ts), shell
+      wired in [`desktop/src-tauri/src/lib.rs`](../../desktop/src-tauri/src/lib.rs); a debug window
+      reached the dashboard against a real SQLite file on 2026-11-11; Playwright shell test
+      [`desktop/tests/e2e/shell.spec.ts`](../../desktop/tests/e2e/shell.spec.ts).
+- [x] Rust workspace builds with format/clippy/test clean.
+      Evidence: `pnpm verify` locally (fmt, clippy `-D warnings`, `cargo test --workspace`, layer
+      check) on 2026-11-11; CI job `rust` added (not yet run remotely).
+- [x] Generated IPC bindings are committed and CI checks they are current.
+      Evidence: [`desktop/src/lib/ipc/bindings.ts`](../../desktop/src/lib/ipc/bindings.ts) is
+      generated and committed; [`desktop/src-tauri/tests/ipc_contract.rs`](../../desktop/src-tauri/tests/ipc_contract.rs)
+      compares it with every registered descriptor; CI job `contract` runs
+      `pnpm bindings && git diff --exit-code`.
+- [x] Feature registry renders navigation from manifests (no hard-coded nav).
+      Evidence: [`desktop/src/lib/features/registry.ts`](../../desktop/src/lib/features/registry.ts),
+      [`desktop/src/lib/features/registry.test.ts`](../../desktop/src/lib/features/registry.test.ts),
+      [`desktop/src/lib/shell/AppShell.svelte`](../../desktop/src/lib/shell/AppShell.svelte) renders
+      `registry.current`; the boundary test forbids cross-feature imports.
+- [x] `pnpm gen feature demo --nav` produces a working module without shell edits.
+      Evidence: [`tools/gen-feature.test.mjs`](../../tools/gen-feature.test.mjs) and a real run on
+      2026-11-11 that added `/demo` to the sidebar and palette; the generated command returned an
+      empty list from the Rust backend, then the slice was reverted. No shell or registry edits.
+- [x] Capabilities are least-privilege; CSP blocks remote content.
+      Evidence: [`desktop/src-tauri/capabilities/default.json`](../../desktop/src-tauri/capabilities/default.json)
+      grants only `core:default` and `log:default`; the CSP in
+      [`desktop/src-tauri/tauri.conf.json`](../../desktop/src-tauri/tauri.conf.json) blocked an
+      in-app `fetch("https://example.com")` (manual probe, no violation event exposed, request failed).
 
 ## Data safety (phase 2)
 

@@ -9,7 +9,8 @@ This directory is the plan for replacing the Textual TUI with a Tauri 2 + Svelte
 desktop application. It is written to be executed in phases and to make adding new
 features cheap, not just to reproduce the current screens.
 
-**Status:** planning only. No application code has been moved or deleted.
+**Status:** Phase 1 (architecture) implemented — see [02-exec.md](02-exec.md). The TUI is
+under `legacy/python-tui/`; no application code remains at the repository root.
 
 ## Documents
 

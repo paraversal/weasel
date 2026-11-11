@@ -25,10 +25,7 @@ impl TauriClipboard {
 #[async_trait]
 impl Clipboard for TauriClipboard {
     async fn write_text(&self, text: String) -> weasel_core::CoreResult<()> {
-        self.app
-            .clipboard()
-            .write_text(text)
-            .map_err(CoreError::io)
+        self.app.clipboard().write_text(text).map_err(CoreError::io)
     }
 }
 

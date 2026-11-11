@@ -1289,7 +1289,16 @@ described, and decisions taken on the fly (with the milestone). Keep entries sho
 
 | Date | Milestone | Note |
 | --- | --- | --- |
-| | | |
+| 2026-11-11 | M0 | Tagged `tui-final` at `8419e6e`; Python app moved to `legacy/python-tui/`; ADR 0006 records the clean rewrite. |
+| 2026-11-11 | M1–M2 | Pinned rustc 1.99.1, Node 24.1.0, pnpm 12.14.0, sqlx 0.9. `weasel-core` depends on `tracing` for the settings fallback warning (dev-dependency plus one warning path). Store tests use fixture migrations containing `app_meta`, because `open` writes metadata. |
+| 2026-11-11 | M3 | SvelteKit 3 has no `svelte.config.js`: the adapter and the `$lib` alias are configured in `desktop/vite.config.ts`; the alias prints a deprecation warning on every command. shadcn-svelte 1.8 preset `nova`; its CLI pinned `tailwind-variants` to 3.3.0. `mode-watcher` was removed and sonner takes the theme from our store. |
+| 2026-11-11 | M4 | The log plugin is registered inside `setup` with `Folder { logs_dir }` so logs follow `WEASEL_DATA_DIR`; plugin registration in the builder cannot know that path. Boot failures keep the window alive and surface through `app_health`. |
+| 2026-11-11 | M5 | Commands resolve to `{status, data|error}`; the binding export is deterministic and the contract test parses `__TAURI_INVOKE` names. |
+| 2026-11-11 | M6 | The mock is installed from the root `load` (before children mount) and dynamically imported so `@tauri-apps/api/mocks` stays out of production bundles. |
+| 2026-11-11 | M7 | Typed routes reject runtime manifest hrefs; `resolvePath` in `desktop/src/lib/utils/paths.ts` centralises the cast, and the two call sites disable `svelte/no-navigation-without-resolve` with a comment. |
+| 2026-11-11 | M8 | Help uses `g h`, which 08 reserved for History; the built-in help page lists the registry's actual shortcuts. E2E waits for the shell before sending keys and for the palette to close between sequences. |
+| 2026-11-11 | M9 | The generator also adds the command's browser-mock handler and `app_features` entry through two new `@gen:` markers in `mock.ts`, otherwise `mock.test.ts` fails on the next generation. `--force-none` disables `--nav`/`--command`. The demo slice was generated, bound, checked, opened in the real window, then reverted. |
+| 2026-11-11 | M10 | CI workflow added but not run remotely (branch not pushed). Local acceptance ran: `pnpm verify`, `pnpm bindings && git diff --exit-code`, `pnpm test:e2e`. The root `test` script uses `node --test tools/*.test.mjs`; Node 24 does not accept the bare `tools/` directory here. |
 
 ## 11. Handoff to later exec plans
 

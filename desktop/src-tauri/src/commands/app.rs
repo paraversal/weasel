@@ -45,7 +45,11 @@ impl From<FeatureDescriptor> for FeatureDescriptorDto {
         Self {
             id: descriptor.id.to_owned(),
             title: descriptor.title.to_owned(),
-            commands: descriptor.commands.iter().map(|c| (*c).to_owned()).collect(),
+            commands: descriptor
+                .commands
+                .iter()
+                .map(|c| (*c).to_owned())
+                .collect(),
             events: descriptor.events.iter().map(|e| (*e).to_owned()).collect(),
         }
     }
@@ -112,11 +116,11 @@ pub async fn app_features() -> Result<Vec<FeatureDescriptorDto>, AppError> {
 /// when the database is broken.
 #[tauri::command]
 #[specta::specta]
-pub async fn app_open_data_dir(
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> Result<(), AppError> {
+pub async fn app_open_data_dir(app: AppHandle, state: State<'_, AppState>) -> Result<(), AppError> {
     app.opener()
-        .open_path(state.paths.data_dir.to_string_lossy().into_owned(), None::<String>)
+        .open_path(
+            state.paths.data_dir.to_string_lossy().into_owned(),
+            None::<String>,
+        )
         .map_err(AppError::internal)
 }
