@@ -61,8 +61,7 @@ pub fn plan(
     let history_by_email = history_index(snapshot, &by_id);
 
     let mut conflicts: Vec<Conflict> = Vec::new();
-    let mut outcomes: Vec<Outcome> =
-        vec![Outcome::Action(PlanAction::Add); rows.len()];
+    let mut outcomes: Vec<Outcome> = vec![Outcome::Action(PlanAction::Add); rows.len()];
     let mut conflicted_rows: HashSet<u32> = HashSet::new();
 
     // 1. Duplicate addresses inside the file.
@@ -136,10 +135,7 @@ pub fn plan(
                         Conflict {
                             rows: vec![row.row],
                             kind: ConflictKind::AmbiguousIdentity,
-                            candidates: contacts
-                                .iter()
-                                .map(|contact| (*contact).clone())
-                                .collect(),
+                            candidates: contacts.iter().map(|contact| (*contact).clone()).collect(),
                         },
                     );
                     outcomes[index] = Outcome::Conflict(conflict_index);
@@ -371,9 +367,11 @@ pub fn resolve(
                 match &resolution.action {
                     ConflictAction::Skip => continue,
                     ConflictAction::CreateNew => {
-                        if conflict.candidates.iter().any(|candidate| {
-                            candidate.email_normalized == row.email.normalized
-                        }) {
+                        if conflict
+                            .candidates
+                            .iter()
+                            .any(|candidate| candidate.email_normalized == row.email.normalized)
+                        {
                             return Err(CoreError::Validation {
                                 field: "resolutions",
                                 reason: format!(

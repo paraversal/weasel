@@ -5,8 +5,12 @@
 
 use std::sync::Arc;
 
-use weasel_core::ports::{Clipboard, Clock, FileDialog};
+use weasel_core::campaign::CampaignService;
+use weasel_core::contact::ContactService;
+use weasel_core::ports::{AuditRepository, Clipboard, Clock, FileDialog};
+use weasel_core::send::SendService;
 use weasel_core::settings::SettingsService;
+use weasel_import::service::ImportService;
 use weasel_platform::DataPaths;
 use weasel_store::Store;
 
@@ -17,8 +21,16 @@ use crate::events::EventBus;
 pub struct Services {
     pub store: Store,
     pub settings: SettingsService,
-    // Ports are composed here once so features only add commands; the first consumers
-    // arrive with imports and the campaign sender.
+    pub contacts: ContactService,
+    pub imports: ImportService,
+    // TODO(04-exec): commands start consuming these.
+    #[allow(dead_code)]
+    pub campaigns: CampaignService,
+    #[allow(dead_code)]
+    pub sends: SendService,
+    #[allow(dead_code)]
+    pub audit: Arc<dyn AuditRepository>,
+    // Ports are composed here once so features only add commands.
     #[allow(dead_code)]
     pub clock: Arc<dyn Clock>,
     #[allow(dead_code)]

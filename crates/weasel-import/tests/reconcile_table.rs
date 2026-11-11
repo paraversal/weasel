@@ -4,7 +4,7 @@ use weasel_core::{
     CoreError,
     email::EmailAddress,
     enums::{ContactSource, ContactStatus, ImportScope},
-    identity::{IdentityStrategy, NameIdentity, NAME_IDENTITY_ID},
+    identity::{IdentityStrategy, NAME_IDENTITY_ID, NameIdentity},
     import::{
         ColumnMapping, ConflictAction, ConflictKind, ConflictResolution, ContactOp, ContactRef,
         ImportPlan, NormalizedRow, PlanAction, PlanWarning, ReconcileSnapshot, RowError,
@@ -112,11 +112,46 @@ enum Action {
 
 #[test]
 fn new_same_names_and_email_are_classified() {
-    let ada = contact(1, "Ada", "Lovelace", "ada@example.edu", ContactStatus::Active, ContactSource::Import);
-    let bob = contact(2, "Bob", "Babbage", "bob@example.edu", ContactStatus::Active, ContactSource::Import);
-    let cleo = contact(3, "Cleo", "Curtis", "cleo@example.edu", ContactStatus::Active, ContactSource::Import);
-    let dora = contact(4, "Dora", "Dee", "dora@example.edu", ContactStatus::Active, ContactSource::Import);
-    let erin = contact(5, "Erin", "Eve", "erin@example.edu", ContactStatus::Active, ContactSource::Import);
+    let ada = contact(
+        1,
+        "Ada",
+        "Lovelace",
+        "ada@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
+    let bob = contact(
+        2,
+        "Bob",
+        "Babbage",
+        "bob@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
+    let cleo = contact(
+        3,
+        "Cleo",
+        "Curtis",
+        "cleo@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
+    let dora = contact(
+        4,
+        "Dora",
+        "Dee",
+        "dora@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
+    let erin = contact(
+        5,
+        "Erin",
+        "Eve",
+        "erin@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
     let rows = vec![
         row(2, "Ada", "Lovelace", "ada@example.edu"),
         row(3, "Ada Lovelace", "Lovelace", "ada@example.edu"),
@@ -153,8 +188,22 @@ fn new_same_names_and_email_are_classified() {
 
 #[test]
 fn identity_and_history_ambiguity_are_conflicts() {
-    let first = contact(1, "Ada", "Lovelace", "one@example.edu", ContactStatus::Active, ContactSource::Import);
-    let mut second = contact(2, "Ada", "Lovelace", "two@example.edu", ContactStatus::Active, ContactSource::Import);
+    let first = contact(
+        1,
+        "Ada",
+        "Lovelace",
+        "one@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
+    let mut second = contact(
+        2,
+        "Ada",
+        "Lovelace",
+        "two@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
     second.identity_key = NameIdentity.key("Ada", "Lovelace");
     let rows = vec![
         row(2, "Ada", "Lovelace", "three@example.edu"),
@@ -176,13 +225,32 @@ fn identity_and_history_ambiguity_are_conflicts() {
 
 #[test]
 fn removed_people_restore_and_identity_beats_a_new_address() {
-    let gone = contact(1, "Ada", "Lovelace", "old@example.edu", ContactStatus::Removed, ContactSource::Import);
-    let moved = contact(2, "Grace", "Hopper", "grace.old@example.edu", ContactStatus::Active, ContactSource::Import);
+    let gone = contact(
+        1,
+        "Ada",
+        "Lovelace",
+        "old@example.edu",
+        ContactStatus::Removed,
+        ContactSource::Import,
+    );
+    let moved = contact(
+        2,
+        "Grace",
+        "Hopper",
+        "grace.old@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
     let rows = vec![
         row(4, "Ada", "Lovelace", "old@example.edu"),
         row(5, "Grace", "Hopper", "grace.new@example.edu"),
     ];
-    let plan = planning(&rows, &[], &snapshot(vec![gone, moved], &[]), ImportScope::Delta);
+    let plan = planning(
+        &rows,
+        &[],
+        &snapshot(vec![gone, moved], &[]),
+        ImportScope::Delta,
+    );
     assert_eq!(action(&plan, 4), Action::Restore);
     assert_eq!(action(&plan, 5), Action::Email);
     assert_eq!(plan.summary.updated, 2);
@@ -190,17 +258,55 @@ fn removed_people_restore_and_identity_beats_a_new_address() {
 
 #[test]
 fn rosters_remove_absent_import_contacts_but_deltas_do_not() {
-    let absent = contact(1, "Absent", "Imported", "absent@example.edu", ContactStatus::Active, ContactSource::Import);
-    let manual = contact(2, "Manual", "Person", "manual@example.edu", ContactStatus::Active, ContactSource::Manual);
-    let archived = contact(3, "Archived", "Person", "archived@example.edu", ContactStatus::Archived, ContactSource::Import);
-    let removed = contact(4, "Removed", "Person", "removed@example.edu", ContactStatus::Removed, ContactSource::Import);
-    let present = contact(5, "Present", "Person", "present@example.edu", ContactStatus::Active, ContactSource::Import);
+    let absent = contact(
+        1,
+        "Absent",
+        "Imported",
+        "absent@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
+    let manual = contact(
+        2,
+        "Manual",
+        "Person",
+        "manual@example.edu",
+        ContactStatus::Active,
+        ContactSource::Manual,
+    );
+    let archived = contact(
+        3,
+        "Archived",
+        "Person",
+        "archived@example.edu",
+        ContactStatus::Archived,
+        ContactSource::Import,
+    );
+    let removed = contact(
+        4,
+        "Removed",
+        "Person",
+        "removed@example.edu",
+        ContactStatus::Removed,
+        ContactSource::Import,
+    );
+    let present = contact(
+        5,
+        "Present",
+        "Person",
+        "present@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
     let rows = vec![row(2, "Present", "Person", "present@example.edu")];
 
     let roster = planning(
         &rows,
         &[],
-        &snapshot(vec![absent, manual, archived, removed, present.clone()], &[]),
+        &snapshot(
+            vec![absent, manual, archived, removed, present.clone()],
+            &[],
+        ),
         ImportScope::Roster,
     );
     assert_eq!(roster.removals.len(), 1);
@@ -218,7 +324,14 @@ fn rosters_remove_absent_import_contacts_but_deltas_do_not() {
 
 #[test]
 fn manual_contacts_require_a_decision() {
-    let manual = contact(1, "Manual", "Person", "manual@example.edu", ContactStatus::Active, ContactSource::Manual);
+    let manual = contact(
+        1,
+        "Manual",
+        "Person",
+        "manual@example.edu",
+        ContactStatus::Active,
+        ContactSource::Manual,
+    );
     let rows = vec![row(2, "Manual", "Person", "manual@example.edu")];
     let plan = planning(&rows, &[], &snapshot(vec![manual], &[]), ImportScope::Delta);
     assert_eq!(action(&plan, 2), Action::Conflict(0));
@@ -228,7 +341,14 @@ fn manual_contacts_require_a_decision() {
 
 #[test]
 fn one_person_cannot_be_matched_by_two_rows() {
-    let ada = contact(1, "Ada", "Lovelace", "ada@example.edu", ContactStatus::Active, ContactSource::Import);
+    let ada = contact(
+        1,
+        "Ada",
+        "Lovelace",
+        "ada@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
     let rows = vec![
         row(2, "Ada", "Byron", "ada@example.edu"),
         row(3, "Ada", "Lovelace", "ada.new@example.edu"),
@@ -242,9 +362,30 @@ fn one_person_cannot_be_matched_by_two_rows() {
 
 #[test]
 fn invalid_rows_and_conflict_candidates_are_not_removed() {
-    let protected = contact(1, "Protected", "Person", "protected@example.edu", ContactStatus::Active, ContactSource::Import);
-    let candidate = contact(2, "Candidate", "Person", "dup@example.edu", ContactStatus::Active, ContactSource::Import);
-    let disposable = contact(3, "Disposable", "Person", "gone@example.edu", ContactStatus::Active, ContactSource::Import);
+    let protected = contact(
+        1,
+        "Protected",
+        "Person",
+        "protected@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
+    let candidate = contact(
+        2,
+        "Candidate",
+        "Person",
+        "dup@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
+    let disposable = contact(
+        3,
+        "Disposable",
+        "Person",
+        "gone@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
     let rows = vec![
         row(2, "New", "Person", "new@example.edu"),
         row(3, "Candidate", "Person", "dup@example.edu"),
@@ -271,9 +412,21 @@ fn invalid_rows_and_conflict_candidates_are_not_removed() {
 
 #[test]
 fn archived_people_are_added_again() {
-    let archived = contact(1, "Ada", "Lovelace", "ada@example.edu", ContactStatus::Archived, ContactSource::Import);
+    let archived = contact(
+        1,
+        "Ada",
+        "Lovelace",
+        "ada@example.edu",
+        ContactStatus::Archived,
+        ContactSource::Import,
+    );
     let rows = vec![row(2, "Ada", "Lovelace", "ada@example.edu")];
-    let plan = planning(&rows, &[], &snapshot(vec![archived], &[]), ImportScope::Roster);
+    let plan = planning(
+        &rows,
+        &[],
+        &snapshot(vec![archived], &[]),
+        ImportScope::Roster,
+    );
     assert_eq!(action(&plan, 2), Action::Add);
     assert!(plan.removals.is_empty());
 }
@@ -391,7 +544,14 @@ fn resolutions_become_operations_and_reject_bad_answers() {
         ContactOp::Create { row: 2, email, .. } if email.normalized == "dup@example.edu"
     ));
 
-    let manual = contact(1, "Manual", "Person", "manual@example.edu", ContactStatus::Active, ContactSource::Manual);
+    let manual = contact(
+        1,
+        "Manual",
+        "Person",
+        "manual@example.edu",
+        ContactStatus::Active,
+        ContactSource::Manual,
+    );
     let rows = vec![row(2, "Manual", "Changed", "manual@example.edu")];
     let manual_plan = planning(&rows, &[], &snapshot(vec![manual], &[]), ImportScope::Delta);
     assert!(matches!(
@@ -440,20 +600,29 @@ fn resolutions_become_operations_and_reject_bad_answers() {
             ..
         } if last == "Changed"
     ));
-    assert!(resolve(
-        &manual_plan,
-        &[ConflictResolution {
-            row: 2,
-            action: ConflictAction::Skip,
-        }]
-    )
-    .unwrap()
-    .is_empty());
+    assert!(
+        resolve(
+            &manual_plan,
+            &[ConflictResolution {
+                row: 2,
+                action: ConflictAction::Skip,
+            }]
+        )
+        .unwrap()
+        .is_empty()
+    );
 }
 
 #[test]
 fn linking_two_rows_to_one_person_is_rejected() {
-    let ada = contact(1, "Ada", "Lovelace", "ada@example.edu", ContactStatus::Active, ContactSource::Import);
+    let ada = contact(
+        1,
+        "Ada",
+        "Lovelace",
+        "ada@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
     let rows = vec![
         row(2, "Ada", "Byron", "ada@example.edu"),
         row(3, "Ada", "Lovelace", "ada.new@example.edu"),
@@ -475,7 +644,14 @@ fn linking_two_rows_to_one_person_is_rejected() {
 
 #[test]
 fn action_for_compares_cleaned_names() {
-    let ada = contact(1, "Ada", "Lovelace", "ada@example.edu", ContactStatus::Active, ContactSource::Import);
+    let ada = contact(
+        1,
+        "Ada",
+        "Lovelace",
+        "ada@example.edu",
+        ContactStatus::Active,
+        ContactSource::Import,
+    );
     assert!(matches!(
         action_for(&row(2, "  Ada ", "Lovelace", "ada@example.edu"), &ada),
         PlanAction::Noop { contact_id: 1 }
@@ -493,7 +669,14 @@ fn progress_is_reported_for_reading_and_matching() {
     }
     let recorder = Recorder::default();
     let rows: Vec<_> = (0..501)
-        .map(|index| row(index + 2, "First", &format!("Last{index}"), &format!("p{index}@example.edu")))
+        .map(|index| {
+            row(
+                index + 2,
+                "First",
+                &format!("Last{index}"),
+                &format!("p{index}@example.edu"),
+            )
+        })
         .collect();
     plan(
         &rows,
@@ -506,7 +689,11 @@ fn progress_is_reported_for_reading_and_matching() {
     )
     .unwrap();
     let calls = recorder.0.lock().unwrap();
-    assert!(calls.iter().all(|(phase, _, _)| *phase == weasel_core::import::ImportPhase::Matching));
+    assert!(
+        calls
+            .iter()
+            .all(|(phase, _, _)| *phase == weasel_core::import::ImportPhase::Matching)
+    );
     assert!(calls.iter().any(|(_, processed, _)| *processed == 0));
     assert!(calls.iter().any(|(_, processed, _)| *processed == 500));
     assert_eq!(calls.last().unwrap().1, 501);

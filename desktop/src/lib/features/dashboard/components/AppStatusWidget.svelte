@@ -15,6 +15,8 @@
 		{ label: 'Version', value: info.data?.version ?? '…' },
 		{ label: 'API version', value: info.data?.apiVersion ?? '…' },
 		{ label: 'Schema version', value: health.data?.schemaVersion?.toString() ?? '…' },
+		{ label: 'Contacts', value: health.data?.contactCount?.toString() ?? '…' },
+		{ label: 'Pending imports', value: health.data?.pendingImports?.toString() ?? '…' },
 		{ label: 'Database', value: info.data?.dbPath ?? '…', mono: true }
 	]);
 

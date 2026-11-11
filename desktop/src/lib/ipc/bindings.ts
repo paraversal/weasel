@@ -56,12 +56,20 @@ export type AppHealthDto = AppHealthDto_Serialize | AppHealthDto_Deserialize;
 export type AppHealthDto_Deserialize = {
 	dbOk: boolean,
 	schemaVersion?: number | null,
+	/**  Active contacts; `None` while boot failed or the query errored. */
+	contactCount?: number | null,
+	/**  Draft import batches; same failure rule. */
+	pendingImports?: number | null,
 	bootError?: string | null,
 };
 
 export type AppHealthDto_Serialize = {
 	dbOk: boolean,
 	schemaVersion: number | null,
+	/**  Active contacts; `None` while boot failed or the query errored. */
+	contactCount: number | null,
+	/**  Draft import batches; same failure rule. */
+	pendingImports: number | null,
 	bootError: string | null,
 };
 

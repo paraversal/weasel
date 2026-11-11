@@ -22,13 +22,7 @@ pub(crate) const LAST: &[&str] = &[
     "family name",
     "name",
 ];
-pub(crate) const EMAIL: &[&str] = &[
-    "email",
-    "e-mail",
-    "mail",
-    "email address",
-    "e-mail-adresse",
-];
+pub(crate) const EMAIL: &[&str] = &["email", "e-mail", "mail", "email address", "e-mail-adresse"];
 
 /// The result of looking at the first rows of a table.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,9 +73,7 @@ fn matched_fields(cells: &[String]) -> Vec<Field> {
     let mut fields = Vec::new();
     for cell in cells {
         let folded = fold(cell);
-        if !fields.contains(&Field::First)
-            && FIRST.iter().any(|synonym| fold(synonym) == folded)
-        {
+        if !fields.contains(&Field::First) && FIRST.iter().any(|synonym| fold(synonym) == folded) {
             fields.push(Field::First);
         } else if !fields.contains(&Field::Last)
             && LAST.iter().any(|synonym| fold(synonym) == folded)

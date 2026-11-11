@@ -89,21 +89,11 @@ pub struct ReconcileSnapshot {
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum PlanAction {
     Add,
-    UpdateDetails {
-        target: ContactRef,
-    },
-    UpdateEmail {
-        target: ContactRef,
-    },
-    Restore {
-        target: ContactRef,
-    },
-    Noop {
-        contact_id: i64,
-    },
-    Conflict {
-        index: usize,
-    },
+    UpdateDetails { target: ContactRef },
+    UpdateEmail { target: ContactRef },
+    Restore { target: ContactRef },
+    Noop { contact_id: i64 },
+    Conflict { index: usize },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

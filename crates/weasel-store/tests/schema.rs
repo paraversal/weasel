@@ -109,13 +109,14 @@ async fn live_email_is_unique_but_archived_rows_do_not_block() {
 async fn only_one_open_email_history_row_per_contact() {
     let db = TempDb::new().await;
     let store = db.store();
-    let contact_id: i64 =
-        sqlx::query_scalar("INSERT INTO contacts (first_name, last_name, email, email_normalized, \
+    let contact_id: i64 = sqlx::query_scalar(
+        "INSERT INTO contacts (first_name, last_name, email, email_normalized, \
                             date_added, updated_at) VALUES ('A', 'B', 'a@x.edu', 'a@x.edu', 1, 1) \
-                            RETURNING id")
-            .fetch_one(store.pool())
-            .await
-            .unwrap();
+                            RETURNING id",
+    )
+    .fetch_one(store.pool())
+    .await
+    .unwrap();
 
     let insert = |valid_to: Option<i64>| {
         sqlx::query(
@@ -217,13 +218,14 @@ async fn audit_events_cannot_be_updated_or_deleted() {
 async fn enum_check_constraints_reject_unknown_values() {
     let db = TempDb::new().await;
     let store = db.store();
-    let contact_id: i64 =
-        sqlx::query_scalar("INSERT INTO contacts (first_name, last_name, email, email_normalized, \
+    let contact_id: i64 = sqlx::query_scalar(
+        "INSERT INTO contacts (first_name, last_name, email, email_normalized, \
                             date_added, updated_at) VALUES ('A', 'B', 'a@x.edu', 'a@x.edu', 1, 1) \
-                            RETURNING id")
-            .fetch_one(store.pool())
-            .await
-            .unwrap();
+                            RETURNING id",
+    )
+    .fetch_one(store.pool())
+    .await
+    .unwrap();
     let campaign_id: i64 = sqlx::query_scalar(
         "INSERT INTO campaigns (name, created_at, updated_at) VALUES ('C', 1, 1) RETURNING id",
     )

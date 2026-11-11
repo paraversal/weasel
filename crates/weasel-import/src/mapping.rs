@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use weasel_core::{CoreError, CoreResult, import::ColumnMapping};
 
-use crate::header::{self, FIRST, LAST, EMAIL};
+use crate::header::{self, EMAIL, FIRST, LAST};
 
 /// Fields found by name. Any field may be absent; the user then picks manually.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]

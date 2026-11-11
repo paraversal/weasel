@@ -93,11 +93,7 @@ mod tests {
 
     use std::path::PathBuf;
 
-    use weasel_core::{
-        enums::SourceKind,
-        identity::NameIdentity,
-        import::ColumnMapping,
-    };
+    use weasel_core::{enums::SourceKind, identity::NameIdentity, import::ColumnMapping};
 
     use super::*;
     use crate::source::{ParsedSource, RawRow};
@@ -111,7 +107,11 @@ mod tests {
             sheet_name: None,
             sheets: Vec::new(),
             header_row: 1,
-            headers: vec!["VORNAME".to_owned(), "NACHNAME".to_owned(), "EMAIL".to_owned()],
+            headers: vec![
+                "VORNAME".to_owned(),
+                "NACHNAME".to_owned(),
+                "EMAIL".to_owned(),
+            ],
             rows: rows
                 .into_iter()
                 .map(|(row, cells)| RawRow {

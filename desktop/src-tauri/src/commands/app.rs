@@ -28,6 +28,10 @@ pub struct AppInfoDto {
 pub struct AppHealthDto {
     pub db_ok: bool,
     pub schema_version: Option<i64>,
+    /// Active contacts; `None` while boot failed or the query errored.
+    pub contact_count: Option<i64>,
+    /// Draft import batches; same failure rule.
+    pub pending_imports: Option<i64>,
     pub boot_error: Option<String>,
 }
 
@@ -90,14 +94,32 @@ pub async fn app_info(app: AppHandle, state: State<'_, AppState>) -> Result<AppI
 #[specta::specta]
 pub async fn app_health(state: State<'_, AppState>) -> Result<AppHealthDto, AppError> {
     Ok(match &state.boot {
-        Ok(services) => AppHealthDto {
-            db_ok: services.store.ping().await.is_ok(),
-            schema_version: services.store.schema_version().await.ok(),
-            boot_error: None,
-        },
+        Ok(services) => {
+            let contact_count = services
+                .contacts
+                .count_active()
+                .await
+                .ok()
+                .and_then(|count| i64::try_from(count).ok());
+            let pending_imports = services
+                .imports
+                .count_drafts()
+                .await
+                .ok()
+                .and_then(|count| i64::try_from(count).ok());
+            AppHealthDto {
+                db_ok: services.store.ping().await.is_ok(),
+                schema_version: services.store.schema_version().await.ok(),
+                contact_count,
+                pending_imports,
+                boot_error: None,
+            }
+        }
         Err(err) => AppHealthDto {
             db_ok: false,
             schema_version: None,
+            contact_count: None,
+            pending_imports: None,
             boot_error: Some(err.message.clone()),
         },
     })

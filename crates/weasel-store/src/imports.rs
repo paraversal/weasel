@@ -4,10 +4,8 @@ use async_trait::async_trait;
 use serde_json::json;
 use sqlx::sqlite::SqliteRow;
 use sqlx::{QueryBuilder, Row, Sqlite};
-use weasel_core::audit::{actions, AuditRecord};
-use weasel_core::contact::{
-    Contact, ContactChanges, ContactQuery, ContactSort, NewContactRecord,
-};
+use weasel_core::audit::{AuditRecord, actions};
+use weasel_core::contact::{Contact, ContactChanges, ContactQuery, ContactSort, NewContactRecord};
 use weasel_core::enums::{ContactSource, ContactStatus, EmailChangeReason, ImportStatus};
 use weasel_core::import::{
     ContactOp, ContactRef, ImportBatch, ImportPlan, ImportSummary, NewImportBatch,
@@ -17,11 +15,11 @@ use weasel_core::ports::{ContactRepository, ImportRepository};
 use weasel_core::query::{Page, PageRequest};
 use weasel_core::{CoreError, CoreResult};
 
+use crate::Store;
 use crate::audit;
 use crate::codec::{decode_enum, decode_json, encode_json};
-use crate::contacts::{write_contact_update, write_new_contact, SqliteContacts};
+use crate::contacts::{SqliteContacts, write_contact_update, write_new_contact};
 use crate::error::StoreError;
-use crate::Store;
 
 const IMPORT_COLUMNS: &str = "id, source_kind, source_name, source_path, file_hash, sheet_name, \
      scope, status, created_at, applied_at, row_count, added_count, updated_count, removed_count, \
@@ -58,9 +56,8 @@ impl SqliteImports {
         status: Option<ImportStatus>,
         page: &PageRequest,
     ) -> CoreResult<Page<ImportBatch>> {
-        let mut builder: QueryBuilder<Sqlite> = QueryBuilder::new(format!(
-            "SELECT {IMPORT_COLUMNS} FROM import_batches"
-        ));
+        let mut builder: QueryBuilder<Sqlite> =
+            QueryBuilder::new(format!("SELECT {IMPORT_COLUMNS} FROM import_batches"));
         if let Some(status) = status {
             builder.push(" WHERE status = ").push_bind(status.as_str());
         }
@@ -126,8 +123,7 @@ impl ImportRepository for SqliteImports {
             .iter()
             .map(|row| {
                 Ok((
-                    row.try_get("email_normalized")
-                        .map_err(StoreError::from)?,
+                    row.try_get("email_normalized").map_err(StoreError::from)?,
                     row.try_get("contact_id").map_err(StoreError::from)?,
                 ))
             })
@@ -136,11 +132,7 @@ impl ImportRepository for SqliteImports {
         Ok(ReconcileSnapshot { contacts, history })
     }
 
-    async fn create_draft(
-        &self,
-        draft: NewImportBatch,
-        now_ms: i64,
-    ) -> CoreResult<ImportBatch> {
+    async fn create_draft(&self, draft: NewImportBatch, now_ms: i64) -> CoreResult<ImportBatch> {
         let plan_json = encode_json(&draft.plan)?;
         let summary = &draft.summary;
         let mut tx = self.store.begin_write().await?;
@@ -202,9 +194,7 @@ impl ImportRepository for SqliteImports {
         };
         let plan: ImportPlan = decode_json("import_batches.plan_json", &plan_json)?;
         if plan.version != weasel_core::import::PLAN_VERSION {
-            return Err(CoreError::InvalidState(
-                "Preview the file again".to_owned(),
-            ));
+            return Err(CoreError::InvalidState("Preview the file again".to_owned()));
         }
         Ok(plan)
     }
@@ -501,4 +491,3 @@ fn contact_ref_from_row(row: &SqliteRow) -> CoreResult<ContactRef> {
         )?,
     })
 }
-

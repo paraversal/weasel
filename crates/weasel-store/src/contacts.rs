@@ -3,10 +3,7 @@
 
 use async_trait::async_trait;
 use serde_json::Value;
-use sqlx::{
-    Executor, QueryBuilder, Row, Sqlite,
-    sqlite::SqliteRow,
-};
+use sqlx::{Executor, QueryBuilder, Row, Sqlite, sqlite::SqliteRow};
 use weasel_core::{
     CoreError, CoreResult,
     audit::{AuditRecord, actions},
@@ -20,12 +17,7 @@ use weasel_core::{
     query::Page,
 };
 
-use crate::{
-    audit,
-    codec::decode_enum,
-    error::StoreError,
-    pool::Store,
-};
+use crate::{audit, codec::decode_enum, error::StoreError, pool::Store};
 
 const CONTACT_COLUMNS: &str = "id, first_name, last_name, email, email_normalized, \
      identity_key, status, source, import_batch_id, date_added, updated_at, version, notes, \
@@ -51,13 +43,13 @@ impl SqliteContacts {
              FROM contacts WHERE id = ?",
         )
         .bind(id)
-            .fetch_optional(executor)
-            .await
-            .map_err(StoreError::from)?
-            .ok_or_else(|| CoreError::NotFound {
-                entity: "contact",
-                id: id.to_string(),
-            })?;
+        .fetch_optional(executor)
+        .await
+        .map_err(StoreError::from)?
+        .ok_or_else(|| CoreError::NotFound {
+            entity: "contact",
+            id: id.to_string(),
+        })?;
         contact_from_row(&row)
     }
 }
@@ -192,8 +184,10 @@ impl ContactRepository for SqliteContacts {
             .map_err(StoreError::from)?;
         let mut stats = ContactStats::default();
         for row in &counts {
-            let status: ContactStatus =
-                decode_enum("contacts.status", row.try_get("status").map_err(StoreError::from)?)?;
+            let status: ContactStatus = decode_enum(
+                "contacts.status",
+                row.try_get("status").map_err(StoreError::from)?,
+            )?;
             let count = u64::try_from(row.try_get::<i64, _>("count").map_err(StoreError::from)?)
                 .unwrap_or_default();
             match status {
@@ -220,10 +214,8 @@ impl ContactRepository for SqliteContacts {
                 Ok(BatchCount {
                     batch_id: row.try_get("batch_id").map_err(StoreError::from)?,
                     source_name: row.try_get("source_name").map_err(StoreError::from)?,
-                    count: u64::try_from(
-                        row.try_get::<i64, _>("count").map_err(StoreError::from)?,
-                    )
-                    .unwrap_or_default(),
+                    count: u64::try_from(row.try_get::<i64, _>("count").map_err(StoreError::from)?)
+                        .unwrap_or_default(),
                 })
             })
             .collect::<CoreResult<Vec<_>>>()?;
@@ -231,10 +223,11 @@ impl ContactRepository for SqliteContacts {
     }
 
     async fn count_active(&self) -> CoreResult<u64> {
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM contacts WHERE status = 'active'")
-            .fetch_one(self.store.pool())
-            .await
-            .map_err(StoreError::from)?;
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM contacts WHERE status = 'active'")
+                .fetch_one(self.store.pool())
+                .await
+                .map_err(StoreError::from)?;
         Ok(u64::try_from(count).unwrap_or_default())
     }
 
@@ -347,13 +340,12 @@ impl ContactRepository for SqliteContacts {
         let mut tx = self.store.begin_write().await?;
         let current = Self::fetch_one(&mut *tx, id).await?;
 
-        let has_sends: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM send_records WHERE contact_id = ?)",
-        )
-        .bind(id)
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(StoreError::from)?;
+        let has_sends: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM send_records WHERE contact_id = ?)")
+                .bind(id)
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(StoreError::from)?;
         if has_sends {
             return Err(CoreError::InvalidState(
                 "This person has send history; archive instead".to_owned(),
@@ -525,7 +517,10 @@ pub(crate) async fn write_contact_update(
         .first_name
         .clone()
         .unwrap_or(current.first_name.clone());
-    let last_name = changes.last_name.clone().unwrap_or(current.last_name.clone());
+    let last_name = changes
+        .last_name
+        .clone()
+        .unwrap_or(current.last_name.clone());
     let (email, email_normalized) = match &changes.email {
         Some(email) => (email.display.clone(), email.normalized.clone()),
         None => (current.email.clone(), current.email_normalized.clone()),
@@ -559,12 +554,11 @@ pub(crate) async fn write_contact_update(
     .await
     .map_err(StoreError::from)?;
     if updated.rows_affected() == 0 {
-        let exists: bool =
-            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM contacts WHERE id = ?)")
-                .bind(id)
-                .fetch_one(&mut **tx)
-                .await
-                .map_err(StoreError::from)?;
+        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM contacts WHERE id = ?)")
+            .bind(id)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(StoreError::from)?;
         if exists || missing_is_conflict {
             return Err(CoreError::Conflict(stale_message));
         }

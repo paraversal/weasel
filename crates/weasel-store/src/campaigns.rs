@@ -2,10 +2,7 @@
 //! records its own audit row.
 
 use async_trait::async_trait;
-use sqlx::{
-    Executor, QueryBuilder, Row, Sqlite,
-    sqlite::SqliteRow,
-};
+use sqlx::{Executor, QueryBuilder, Row, Sqlite, sqlite::SqliteRow};
 use weasel_core::{
     CoreError, CoreResult,
     audit::{AuditRecord, actions},
@@ -18,12 +15,7 @@ use weasel_core::{
     query::{Page, PageRequest, like_pattern},
 };
 
-use crate::{
-    audit,
-    codec::decode_enum,
-    error::StoreError,
-    pool::Store,
-};
+use crate::{audit, codec::decode_enum, error::StoreError, pool::Store};
 
 const CAMPAIGN_COLUMNS: &str =
     "id, name, description, subject, body, status, created_at, updated_at, version";
@@ -141,18 +133,15 @@ impl CampaignRepository for SqliteCampaigns {
         Ok(stored)
     }
 
-    async fn update(
-        &self,
-        id: i64,
-        patch: CampaignPatch,
-        now_ms: i64,
-    ) -> CoreResult<Campaign> {
+    async fn update(&self, id: i64, patch: CampaignPatch, now_ms: i64) -> CoreResult<Campaign> {
         let mut tx = self.store.begin_write().await?;
         let current = Self::fetch_one(&mut *tx, id).await?;
 
         let updated = Campaign {
             name: patch.name.unwrap_or_else(|| current.name.clone()),
-            description: patch.description.unwrap_or_else(|| current.description.clone()),
+            description: patch
+                .description
+                .unwrap_or_else(|| current.description.clone()),
             subject: patch.subject.unwrap_or_else(|| current.subject.clone()),
             body: patch.body.unwrap_or_else(|| current.body.clone()),
             updated_at: now_ms,
@@ -326,8 +315,10 @@ impl CampaignRepository for SqliteCampaigns {
         rows_query.push(") m");
         push_audience_search(&mut rows_query, search.as_deref());
         rows_query
-            .push(" ORDER BY last_name COLLATE NOCASE ASC, first_name COLLATE NOCASE ASC, \
-                   sort_id ASC LIMIT ")
+            .push(
+                " ORDER BY last_name COLLATE NOCASE ASC, first_name COLLATE NOCASE ASC, \
+                   sort_id ASC LIMIT ",
+            )
             .push_bind(i64::from(page.limit))
             .push(" OFFSET ")
             .push_bind(i64::from(page.offset));
@@ -378,11 +369,7 @@ fn push_filters(
     }
 }
 
-fn push_audience_arms(
-    query: &mut QueryBuilder<Sqlite>,
-    campaign_id: i64,
-    filter: AudienceFilter,
-) {
+fn push_audience_arms(query: &mut QueryBuilder<Sqlite>, campaign_id: i64, filter: AudienceFilter) {
     if matches!(filter, AudienceFilter::Sent | AudienceFilter::All) {
         query.push(
             "SELECT r.contact_id AS contact_id, r.first_name AS first_name, \
@@ -416,9 +403,7 @@ fn push_audience_arms(
 fn push_audience_search(query: &mut QueryBuilder<Sqlite>, search: Option<&str>) {
     if let Some(pattern) = search {
         query
-            .push(
-                " WHERE (first_name LIKE ",
-            )
+            .push(" WHERE (first_name LIKE ")
             .push_bind(pattern.to_owned())
             .push(" ESCAPE '\\' OR last_name LIKE ")
             .push_bind(pattern.to_owned())
@@ -453,10 +438,7 @@ async fn stale_version(
 }
 
 fn count(row: &SqliteRow, column: &str) -> CoreResult<u64> {
-    Ok(
-        u64::try_from(row.try_get::<i64, _>(column).map_err(StoreError::from)?)
-            .unwrap_or_default(),
-    )
+    Ok(u64::try_from(row.try_get::<i64, _>(column).map_err(StoreError::from)?).unwrap_or_default())
 }
 
 fn audience_from_row(row: &SqliteRow) -> CoreResult<AudienceMember> {

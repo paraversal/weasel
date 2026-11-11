@@ -53,11 +53,10 @@ async fn v1_database_is_backed_up_before_upgrade() {
         .connect_with(opts)
         .await
         .unwrap();
-    let version: i64 =
-        sqlx::query_scalar("SELECT COALESCE(MAX(version), 0) FROM _sqlx_migrations")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let version: i64 = sqlx::query_scalar("SELECT COALESCE(MAX(version), 0) FROM _sqlx_migrations")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     assert_eq!(version, 1);
     let row = sqlx::query(
         "SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'contacts'",

@@ -152,7 +152,10 @@ async fn archiving_frees_the_email_but_unarchiving_into_a_taken_one_conflicts() 
     // Grace still owns the address; Ada stays archived.
     let stored = harness.service.get(archived.id).await.unwrap();
     assert_eq!(stored.status, ContactStatus::Archived);
-    assert_eq!(harness.service.get(grace.id).await.unwrap().status, ContactStatus::Active);
+    assert_eq!(
+        harness.service.get(grace.id).await.unwrap().status,
+        ContactStatus::Active
+    );
     assert_fk_clean(&harness.db.store()).await;
 }
 
@@ -177,11 +180,7 @@ async fn stale_versions_and_missing_rows_are_distinguished() {
             ..
         }
     ));
-    let err = harness
-        .service
-        .delete(999, 1)
-        .await
-        .unwrap_err();
+    let err = harness.service.delete(999, 1).await.unwrap_err();
     assert!(matches!(err, CoreError::NotFound { .. }));
 }
 
@@ -240,7 +239,10 @@ async fn email_change_closes_history_and_is_audited() {
         .items;
     assert_eq!(events[0].action, actions::CONTACT_EMAIL_CHANGE);
     assert_eq!(events[0].metadata["reason"], "manual");
-    assert_eq!(events[0].before.as_ref().unwrap()["email"], "ada@example.com");
+    assert_eq!(
+        events[0].before.as_ref().unwrap()["email"],
+        "ada@example.com"
+    );
     assert_eq!(
         events[0].after.as_ref().unwrap()["email"],
         "ada.lovelace@example.edu"

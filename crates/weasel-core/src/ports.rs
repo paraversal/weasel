@@ -148,11 +148,7 @@ pub trait SendRepository: Send + Sync {
 pub trait ImportRepository: Send + Sync {
     /// Active and removed contacts plus their address history.
     async fn snapshot(&self) -> CoreResult<ReconcileSnapshot>;
-    async fn create_draft(
-        &self,
-        draft: NewImportBatch,
-        now_ms: i64,
-    ) -> CoreResult<ImportBatch>;
+    async fn create_draft(&self, draft: NewImportBatch, now_ms: i64) -> CoreResult<ImportBatch>;
     async fn get(&self, id: i64) -> CoreResult<ImportBatch>;
     async fn plan(&self, id: i64) -> CoreResult<ImportPlan>;
     async fn list(

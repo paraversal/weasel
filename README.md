@@ -32,6 +32,7 @@ pnpm test             # vitest (unit + component) and the tool tests
 pnpm test:e2e         # Playwright against a mock-mode preview build
 pnpm verify           # check + lint + tests + fmt + clippy + workspace tests + layers
 pnpm bindings         # regenerate desktop/src/lib/ipc/bindings.ts (commit the result)
+pnpm seed:demo --data-dir .dev-data/demo   # deterministic demo DB (schema 2)
 pnpm gen feature foo [--nav] [--command] [--dry-run]
 ```
 
@@ -45,9 +46,16 @@ The app resolves its data directory through Tauri's app-data path, or `WEASEL_DA
 set. Debug builds and `pnpm dev` use a `dev/` subfolder so they never touch a real database.
 
 ```text
-<data dir>/[dev/]weasel.sqlite3   # schema + settings, WAL, foreign keys on
+<data dir>/[dev/]weasel.sqlite3   # schema 2, WAL, foreign keys on
 <data dir>/[dev/]backups/         # VACUUM INTO snapshots taken before migrations
 <data dir>/[dev/]logs/weasel.log  # rolling log (5 files, 5 MB each)
+```
+
+Seed a demo database (refuses to overwrite without `--force`) and point the app at it:
+
+```bash
+pnpm seed:demo --data-dir .dev-data/demo --contacts 500
+WEASEL_DATA_DIR=.dev-data/demo pnpm dev
 ```
 
 The dashboard shows the resolved paths and opens the folder. A database that cannot be

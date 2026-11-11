@@ -39,8 +39,7 @@ impl From<StoreError> for CoreError {
 /// SQLite reports the violated index in the message. Only the email conflict is
 /// actionable by a person; the rest mean the caller skipped a lookup.
 fn unique_conflict(message: &str) -> CoreError {
-    if message.contains("ux_contacts_email_live") || message.contains("contacts.email_normalized")
-    {
+    if message.contains("ux_contacts_email_live") || message.contains("contacts.email_normalized") {
         CoreError::Conflict("Another contact already uses this email".to_owned())
     } else if message.contains("ux_email_history_open") {
         CoreError::Conflict("This contact already has an open email history row".to_owned())

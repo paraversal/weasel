@@ -60,7 +60,10 @@ mod tests {
 
     #[test]
     fn decodes_known_and_rejects_unknown_enums() {
-        assert_eq!(decode_enum::<Kind>("kind", "alpha".into()).unwrap(), Kind::Alpha);
+        assert_eq!(
+            decode_enum::<Kind>("kind", "alpha".into()).unwrap(),
+            Kind::Alpha
+        );
         assert!(matches!(
             decode_enum::<Kind>("kind", "gamma".into()),
             Err(CoreError::Internal(_))

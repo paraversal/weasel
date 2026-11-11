@@ -66,7 +66,13 @@ export function mockHandlers(): Record<string, Handler> {
 			dbPath: '/mock/weasel.sqlite3',
 			dataDir: '/mock'
 		}),
-		app_health: () => ({ dbOk: true, schemaVersion: 1, bootError: null }),
+		app_health: () => ({
+			dbOk: true,
+			schemaVersion: 2,
+			contactCount: 0,
+			pendingImports: 0,
+			bootError: null
+		}),
 		app_features: () => features,
 		app_open_data_dir: () => null,
 		settings_get_all: () => settings,

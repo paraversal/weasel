@@ -5,12 +5,7 @@ use std::path::{Path, PathBuf};
 
 use rust_xlsxwriter::Workbook;
 use tempfile::TempDir;
-use weasel_core::{
-    CoreError,
-    enums::SourceKind,
-    identity::NameIdentity,
-    import::ColumnMapping,
-};
+use weasel_core::{CoreError, enums::SourceKind, identity::NameIdentity, import::ColumnMapping};
 use weasel_import::{
     ReadOptions,
     mapping::{resolve, suggest},
@@ -69,7 +64,10 @@ fn semicolon_with_bom_and_footer() {
         ]
     );
     assert_eq!(source.ignored_trailing, 1);
-    assert_eq!(source.rows[1].row, 4, "blank lines still advance row numbers");
+    assert_eq!(
+        source.rows[1].row, 4,
+        "blank lines still advance row numbers"
+    );
 }
 
 #[test]
@@ -126,7 +124,11 @@ fn whitespace_case_duplicates_and_bad_emails_survive_to_normalization() {
 fn non_utf8_csv_is_refused_with_advice() {
     let dir = TempDir::new().unwrap();
     let path = dir.path().join("latin1.csv");
-    std::fs::write(&path, b"VORNAME;NACHNAME;EMAIL\nJos\xe9;M\xfcller;j@example.edu\n").unwrap();
+    std::fs::write(
+        &path,
+        b"VORNAME;NACHNAME;EMAIL\nJos\xe9;M\xfcller;j@example.edu\n",
+    )
+    .unwrap();
     let err = read_source(&path, &ReadOptions::default()).unwrap_err();
     match err {
         CoreError::Import { reason, .. } => {
@@ -183,7 +185,9 @@ fn workbook(path: &Path) {
     sheet.set_name("Roster").unwrap();
     sheet.write_string(0, 0, "Roster 2026").unwrap();
     for (column, header) in ["Vorname", "Nachname", "E-Mail-Adresse"].iter().enumerate() {
-        sheet.write_string(1, u16::try_from(column).unwrap(), *header).unwrap();
+        sheet
+            .write_string(1, u16::try_from(column).unwrap(), *header)
+            .unwrap();
     }
     sheet.write_number(2, 0, 12345.0).unwrap();
     sheet.write_string(2, 1, "Lovelace").unwrap();
@@ -248,7 +252,10 @@ fn sheet_selection_and_unknown_sheet() {
     .unwrap_err();
     match err {
         CoreError::Import { reason, .. } => {
-            assert!(reason.contains("Missing") && reason.contains("Roster"), "{reason}");
+            assert!(
+                reason.contains("Missing") && reason.contains("Roster"),
+                "{reason}"
+            );
         }
         other => panic!("unexpected error: {other:?}"),
     }
@@ -287,12 +294,7 @@ fn mapping_suggests_german_headers() {
     assert_eq!(suggested.first_name, Some(0));
     assert_eq!(suggested.last_name, Some(1));
     assert_eq!(suggested.email, Some(2));
-    let mapping = resolve(
-        None,
-        suggested,
-        source.headers.len(),
-    )
-    .unwrap();
+    let mapping = resolve(None, suggested, source.headers.len()).unwrap();
     assert_eq!(
         mapping,
         ColumnMapping {

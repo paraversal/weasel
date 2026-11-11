@@ -37,7 +37,10 @@ async fn harness() -> Harness {
     let sends_repo = SqliteSends::new(store.clone());
     Harness {
         db,
-        campaigns: CampaignService::new(Arc::new(SqliteCampaigns::new(store.clone())), clock.clone()),
+        campaigns: CampaignService::new(
+            Arc::new(SqliteCampaigns::new(store.clone())),
+            clock.clone(),
+        ),
         contacts: ContactService::new(
             Arc::new(SqliteContacts::new(store.clone())),
             clock.clone(),
@@ -349,7 +352,11 @@ async fn note_and_search() {
 
     let recipients = harness
         .sends
-        .recipients(prepared.batch.id, Some("ada@example"), &PageRequest::new(10, 0))
+        .recipients(
+            prepared.batch.id,
+            Some("ada@example"),
+            &PageRequest::new(10, 0),
+        )
         .await
         .unwrap();
     assert_eq!(recipients.total, 1);
@@ -385,7 +392,10 @@ async fn two_prepares_race_and_exactly_one_wins() {
         service.prepare_send(campaign_id)
     );
 
-    let successes = [&left, &right].iter().filter(|result| result.is_ok()).count();
+    let successes = [&left, &right]
+        .iter()
+        .filter(|result| result.is_ok())
+        .count();
     let failures = [&left, &right]
         .iter()
         .filter(|result| matches!(result, Err(CoreError::InvalidState(_))))
@@ -415,11 +425,7 @@ async fn campaign_edit_is_audited() {
     let campaign_id = active_campaign(&harness, "Spring").await;
     let prepared = harness.sends.prepare_send(campaign_id).await.unwrap();
 
-    let events = harness
-        .sends_repo
-        .get(prepared.batch.id)
-        .await
-        .unwrap();
+    let events = harness.sends_repo.get(prepared.batch.id).await.unwrap();
     assert_eq!(events.note, "");
 
     // Audit rows exist for the batch creation and the campaign transition.

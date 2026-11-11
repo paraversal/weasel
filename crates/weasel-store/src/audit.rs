@@ -61,16 +61,14 @@ impl SqliteAudit {
     ) -> CoreResult<Page<AuditEvent>> {
         let page = page.normalized();
         let total: i64 = match entity {
-            Some((entity_type, entity_id)) => {
-                sqlx::query_scalar(
-                    "SELECT COUNT(*) FROM audit_events WHERE entity_type = ? AND entity_id = ?",
-                )
-                .bind(entity_type)
-                .bind(entity_id)
-                .fetch_one(self.store.pool())
-                .await
-                .map_err(StoreError::from)?
-            }
+            Some((entity_type, entity_id)) => sqlx::query_scalar(
+                "SELECT COUNT(*) FROM audit_events WHERE entity_type = ? AND entity_id = ?",
+            )
+            .bind(entity_type)
+            .bind(entity_id)
+            .fetch_one(self.store.pool())
+            .await
+            .map_err(StoreError::from)?,
             None => sqlx::query_scalar("SELECT COUNT(*) FROM audit_events")
                 .fetch_one(self.store.pool())
                 .await
@@ -143,10 +141,7 @@ fn event_from_row(row: &sqlx::sqlite::SqliteRow) -> CoreResult<AuditEvent> {
     })
 }
 
-fn decode_optional_json(
-    row: &sqlx::sqlite::SqliteRow,
-    column: &str,
-) -> CoreResult<Option<Value>> {
+fn decode_optional_json(row: &sqlx::sqlite::SqliteRow, column: &str) -> CoreResult<Option<Value>> {
     let raw: Option<String> = row.try_get(column).map_err(StoreError::from)?;
     raw.as_deref()
         .map(|raw| decode_json(column, raw))

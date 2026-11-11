@@ -1,7 +1,6 @@
 use std::{
     ffi::OsString,
-    fs,
-    io,
+    fs, io,
     path::{Path, PathBuf},
 };
 

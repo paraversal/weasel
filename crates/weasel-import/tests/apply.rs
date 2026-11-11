@@ -6,23 +6,19 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use sqlx::Row;
+use weasel_core::CoreError;
 use weasel_core::campaign::{CampaignService, NewCampaign};
 use weasel_core::contact::{
     Contact, ContactPatch, ContactQuery, ContactService, ContactSort, NewContact,
 };
-use weasel_core::enums::{
-    CampaignStatus, ContactStatus, ImportScope, ImportStatus, SourceKind,
-};
+use weasel_core::enums::{CampaignStatus, ContactStatus, ImportScope, ImportStatus, SourceKind};
 use weasel_core::identity::{IdentityStrategy, NameIdentity};
 use weasel_core::ports::{Clipboard, ProgressSink};
 use weasel_core::query::PageRequest;
 use weasel_core::send::SendService;
-use weasel_core::CoreError;
 use weasel_import::service::{ImportService, PreviewOptions};
 use weasel_import::source::{ParsedSource, RawRow};
-use weasel_store::{
-    SqliteCampaigns, SqliteContacts, SqliteImports, SqliteSends,
-};
+use weasel_store::{SqliteCampaigns, SqliteContacts, SqliteImports, SqliteSends};
 use weasel_testkit::assert::assert_fk_clean;
 use weasel_testkit::{FakeClipboard, FixedClock, TempDb};
 
@@ -51,10 +47,8 @@ impl Harness {
             clock.clone(),
             identity.clone(),
         );
-        let campaigns = CampaignService::new(
-            Arc::new(SqliteCampaigns::new(store.clone())),
-            clock.clone(),
-        );
+        let campaigns =
+            CampaignService::new(Arc::new(SqliteCampaigns::new(store.clone())), clock.clone());
         let clipboard: Arc<dyn Clipboard> = Arc::new(FakeClipboard::new());
         let sends = SendService::new(
             Arc::new(SqliteSends::new(store.clone())),
@@ -148,11 +142,7 @@ fn source(rows: &[(&str, &str, &str)]) -> ParsedSource {
             .enumerate()
             .map(|(index, (first, last, email))| RawRow {
                 row: index as u32 + 2,
-                cells: vec![
-                    (*first).to_owned(),
-                    (*last).to_owned(),
-                    (*email).to_owned(),
-                ],
+                cells: vec![(*first).to_owned(), (*last).to_owned(), (*email).to_owned()],
             })
             .collect(),
         ignored_trailing: 0,
@@ -211,14 +201,11 @@ async fn re_previewing_the_same_file_changes_nothing() {
     assert_eq!(again.summary.updated, 0);
     assert_eq!(again.summary.removed, 0);
     assert_eq!(again.summary.unchanged, 2);
-    assert!(again
-        .warnings
-        .iter()
-        .any(|warning| matches!(
-            warning,
-            weasel_core::import::PlanWarning::SameFileAsBatch { batch_id }
-                if *batch_id == preview.batch.id
-        )));
+    assert!(again.warnings.iter().any(|warning| matches!(
+        warning,
+        weasel_core::import::PlanWarning::SameFileAsBatch { batch_id }
+            if *batch_id == preview.batch.id
+    )));
 }
 
 #[tokio::test]
@@ -317,10 +304,16 @@ async fn unresolved_conflicts_leave_the_draft_untouched() {
         .await
         .unwrap();
 
-    let preview = h.preview(&source(&[("Alicia", "Smith", "alice@example.edu")])).await;
+    let preview = h
+        .preview(&source(&[("Alicia", "Smith", "alice@example.edu")]))
+        .await;
     assert_eq!(preview.conflicts.len(), 1);
 
-    let err = h.imports.apply(preview.batch.id, Vec::new()).await.unwrap_err();
+    let err = h
+        .imports
+        .apply(preview.batch.id, Vec::new())
+        .await
+        .unwrap_err();
     assert!(matches!(err, CoreError::InvalidState(message) if message.contains("need a decision")));
     let batch = h.imports.get(preview.batch.id).await.unwrap();
     assert_eq!(batch.status, ImportStatus::Draft);
@@ -335,7 +328,9 @@ async fn a_stale_preview_is_rejected_without_changes() {
     h.apply(first.batch.id).await;
     let person = h.by_email("alice@example.edu").await;
 
-    let next = h.preview(&source(&[("Alice", "Jones", "alice@example.edu")])).await;
+    let next = h
+        .preview(&source(&[("Alice", "Jones", "alice@example.edu")]))
+        .await;
     assert_eq!(next.summary.updated, 1);
 
     h.contacts
@@ -350,7 +345,11 @@ async fn a_stale_preview_is_rejected_without_changes() {
         .await
         .unwrap();
 
-    let err = h.imports.apply(next.batch.id, Vec::new()).await.unwrap_err();
+    let err = h
+        .imports
+        .apply(next.batch.id, Vec::new())
+        .await
+        .unwrap_err();
     assert!(
         matches!(err, CoreError::Conflict(message) if message == "Contacts changed since the preview. Preview the file again.")
     );
@@ -381,7 +380,11 @@ async fn a_mid_transaction_failure_rolls_back_every_row() {
         .await
         .unwrap();
 
-    let err = h.imports.apply(preview.batch.id, Vec::new()).await.unwrap_err();
+    let err = h
+        .imports
+        .apply(preview.batch.id, Vec::new())
+        .await
+        .unwrap_err();
     assert!(matches!(err, CoreError::Conflict(_)));
     let contacts = h.all_contacts().await;
     assert_eq!(contacts.len(), 1);
@@ -403,7 +406,11 @@ async fn a_batch_cannot_be_applied_twice() {
     let h = Harness::new().await;
     let preview = h.preview(&source(&[alice()])).await;
     h.apply(preview.batch.id).await;
-    let err = h.imports.apply(preview.batch.id, Vec::new()).await.unwrap_err();
+    let err = h
+        .imports
+        .apply(preview.batch.id, Vec::new())
+        .await
+        .unwrap_err();
     assert!(matches!(err, CoreError::InvalidState(_)));
     assert_eq!(h.all_contacts().await.len(), 1);
 }

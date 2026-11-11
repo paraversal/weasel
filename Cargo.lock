@@ -5617,6 +5617,7 @@ dependencies = [
  "tokio",
  "tracing",
  "weasel-core",
+ "weasel-import",
  "weasel-platform",
  "weasel-store",
  "weasel-testkit",
@@ -5678,7 +5679,9 @@ dependencies = [
  "serde_json",
  "sqlx",
  "tempfile",
+ "tokio",
  "weasel-core",
+ "weasel-import",
  "weasel-store",
 ]
 

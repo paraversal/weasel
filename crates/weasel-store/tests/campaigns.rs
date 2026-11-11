@@ -39,17 +39,16 @@ async fn harness() -> Harness {
     let clipboard = Arc::new(FakeClipboard::new());
     Harness {
         db,
-        campaigns: CampaignService::new(Arc::new(SqliteCampaigns::new(store.clone())), clock.clone()),
+        campaigns: CampaignService::new(
+            Arc::new(SqliteCampaigns::new(store.clone())),
+            clock.clone(),
+        ),
         contacts: ContactService::new(
             Arc::new(contacts_repo),
             clock.clone(),
             Arc::new(NameIdentity),
         ),
-        sends: SendService::new(
-            Arc::new(sends_repo),
-            clipboard.clone(),
-            clock.clone(),
-        ),
+        sends: SendService::new(Arc::new(sends_repo), clipboard.clone(), clock.clone()),
         clipboard,
         clock,
     }
@@ -65,7 +64,11 @@ fn campaign_input(name: &str) -> NewCampaign {
 }
 
 async fn create_campaign(harness: &Harness, name: &str) -> weasel_core::campaign::Campaign {
-    harness.campaigns.create(campaign_input(name)).await.unwrap()
+    harness
+        .campaigns
+        .create(campaign_input(name))
+        .await
+        .unwrap()
 }
 
 async fn activate(harness: &Harness, name: &str) -> weasel_core::campaign::Campaign {
@@ -77,12 +80,7 @@ async fn activate(harness: &Harness, name: &str) -> weasel_core::campaign::Campa
         .unwrap()
 }
 
-async fn create_contact(
-    harness: &Harness,
-    first: &str,
-    last: &str,
-    email: &str,
-) -> Contact {
+async fn create_contact(harness: &Harness, first: &str, last: &str, email: &str) -> Contact {
     harness
         .contacts
         .create_manual(NewContact {
@@ -216,13 +214,7 @@ async fn create_update_and_no_op() {
         })
         .await
         .unwrap_err();
-    assert!(matches!(
-        err,
-        CoreError::Validation {
-            field: "name",
-            ..
-        }
-    ));
+    assert!(matches!(err, CoreError::Validation { field: "name", .. }));
     assert_fk_clean(&harness.db.store()).await;
 }
 
@@ -307,7 +299,12 @@ async fn stats_and_audience_on_a_mixed_fixture() {
 
     let sent = harness
         .campaigns
-        .audience(campaign.id, AudienceFilter::Sent, None, &PageRequest::new(100, 0))
+        .audience(
+            campaign.id,
+            AudienceFilter::Sent,
+            None,
+            &PageRequest::new(100, 0),
+        )
         .await
         .unwrap();
     assert_eq!(sent.total, 3);
@@ -328,7 +325,12 @@ async fn stats_and_audience_on_a_mixed_fixture() {
 
     let unsent = harness
         .campaigns
-        .audience(campaign.id, AudienceFilter::Unsent, None, &PageRequest::new(100, 0))
+        .audience(
+            campaign.id,
+            AudienceFilter::Unsent,
+            None,
+            &PageRequest::new(100, 0),
+        )
         .await
         .unwrap();
     assert_eq!(unsent.total, 1);
@@ -337,7 +339,12 @@ async fn stats_and_audience_on_a_mixed_fixture() {
 
     let all = harness
         .campaigns
-        .audience(campaign.id, AudienceFilter::All, None, &PageRequest::new(100, 0))
+        .audience(
+            campaign.id,
+            AudienceFilter::All,
+            None,
+            &PageRequest::new(100, 0),
+        )
         .await
         .unwrap();
     assert_eq!(all.total, 4);

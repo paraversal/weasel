@@ -34,9 +34,9 @@ impl SourceReader for CsvReader {
                 row: None,
                 reason: format!("The CSV file could not be parsed: {err}"),
             })?;
-            let row = record
-                .position()
-                .map_or(1, |position| u32::try_from(position.line()).unwrap_or(u32::MAX));
+            let row = record.position().map_or(1, |position| {
+                u32::try_from(position.line()).unwrap_or(u32::MAX)
+            });
             let mut cells: Vec<String> = record.iter().map(|cell| cell.trim().to_owned()).collect();
             trim_empty_tail(&mut cells);
             rows.push(RawRow { row, cells });

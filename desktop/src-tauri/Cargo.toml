@@ -27,6 +27,7 @@ tauri-build = { version = "2.7.4", features = [] }
 weasel-core.workspace = true
 weasel-store.workspace = true
 weasel-platform.workspace = true
+weasel-import.workspace = true
 
 async-trait.workspace = true
 log = "0.4"

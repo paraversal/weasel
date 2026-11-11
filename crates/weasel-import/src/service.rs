@@ -5,8 +5,8 @@ use std::sync::Arc;
 use weasel_core::enums::{ContactStatus, ImportScope, ImportStatus};
 use weasel_core::identity::IdentityStrategy;
 use weasel_core::import::{
-    ColumnMapping, Conflict, ConflictResolution, ImportBatch, ImportPlan,
-    ImportSummary, NewImportBatch, PlanWarning, PlannedRow, RowError, PLAN_VERSION,
+    ColumnMapping, Conflict, ConflictResolution, ImportBatch, ImportPlan, ImportSummary,
+    NewImportBatch, PLAN_VERSION, PlanWarning, PlannedRow, RowError,
 };
 use weasel_core::ports::{Clock, ImportRepository, ProgressSink};
 use weasel_core::query::{Page, PageRequest};
@@ -58,6 +58,10 @@ impl ImportService {
         }
     }
 
+    pub async fn count_drafts(&self) -> CoreResult<u64> {
+        self.imports.count_drafts().await
+    }
+
     pub async fn preview(
         &self,
         source: &ParsedSource,
@@ -86,8 +90,13 @@ impl ImportService {
             progress,
         )?;
 
-        if let Some(batch_id) = self.imports.last_applied_with_hash(&source.file_hash).await? {
-            plan.warnings.push(PlanWarning::SameFileAsBatch { batch_id });
+        if let Some(batch_id) = self
+            .imports
+            .last_applied_with_hash(&source.file_hash)
+            .await?
+        {
+            plan.warnings
+                .push(PlanWarning::SameFileAsBatch { batch_id });
         }
 
         let now_ms = self.clock.now_ms();
@@ -131,9 +140,7 @@ impl ImportService {
         }
         let plan = self.imports.plan(batch_id).await?;
         if plan.version != PLAN_VERSION {
-            return Err(CoreError::InvalidState(
-                "Preview the file again".to_owned(),
-            ));
+            return Err(CoreError::InvalidState("Preview the file again".to_owned()));
         }
         let ops = reconcile::resolve(&plan, &resolutions)?;
         let summary = summary_for(&plan, &ops);
@@ -142,9 +149,7 @@ impl ImportService {
     }
 
     pub async fn discard(&self, batch_id: i64) -> CoreResult<ImportBatch> {
-        self.imports
-            .discard(batch_id, self.clock.now_ms())
-            .await
+        self.imports.discard(batch_id, self.clock.now_ms()).await
     }
 
     pub async fn list(
@@ -176,7 +181,9 @@ impl ImportService {
         let plan = self.imports.plan(batch_id).await?;
         let total = plan.rows.len() as u64;
         let start = (page.offset as usize).min(plan.rows.len());
-        let end = start.saturating_add(page.limit as usize).min(plan.rows.len());
+        let end = start
+            .saturating_add(page.limit as usize)
+            .min(plan.rows.len());
         Ok(Page {
             items: plan.rows[start..end].to_vec(),
             total,
@@ -211,12 +218,7 @@ fn summary_for(plan: &ImportPlan, ops: &[weasel_core::import::ContactOp]) -> Imp
         unchanged: plan
             .rows
             .iter()
-            .filter(|row| {
-                matches!(
-                    row.action,
-                    weasel_core::import::PlanAction::Noop { .. }
-                )
-            })
+            .filter(|row| matches!(row.action, weasel_core::import::PlanAction::Noop { .. }))
             .count() as u64,
         invalid: plan.errors.len() as u64,
     }

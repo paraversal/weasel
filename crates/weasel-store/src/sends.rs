@@ -2,10 +2,7 @@
 //! the addresses before anything becomes visible.
 
 use async_trait::async_trait;
-use sqlx::{
-    Executor, QueryBuilder, Row, Sqlite, Transaction,
-    sqlite::SqliteRow,
-};
+use sqlx::{Executor, QueryBuilder, Row, Sqlite, Transaction, sqlite::SqliteRow};
 use weasel_core::{
     CoreError, CoreResult,
     audit::{AuditRecord, actions},
@@ -16,12 +13,7 @@ use weasel_core::{
     send::{SendBatch, SendBatchQuery, SendRecord},
 };
 
-use crate::{
-    audit,
-    codec::decode_enum,
-    error::StoreError,
-    pool::Store,
-};
+use crate::{audit, codec::decode_enum, error::StoreError, pool::Store};
 
 const BATCH_COLUMNS: &str = "b.id, b.campaign_id, c.name AS campaign_name, b.created_at, \
      b.recipient_count, b.note, b.copied_at";
@@ -59,10 +51,7 @@ impl SqliteSends {
         batch_from_row(&row)
     }
 
-    async fn fetch_campaign(
-        tx: &mut Transaction<'_, Sqlite>,
-        id: i64,
-    ) -> CoreResult<Campaign> {
+    async fn fetch_campaign(tx: &mut Transaction<'_, Sqlite>, id: i64) -> CoreResult<Campaign> {
         let row = sqlx::query(
             "SELECT id, name, description, subject, body, status, created_at, updated_at, \
              version FROM campaigns WHERE id = ?",
@@ -105,8 +94,10 @@ impl SqliteSends {
                 .push_bind(pattern.to_owned())
                 .push(" ESCAPE '\\' OR c.name LIKE ")
                 .push_bind(pattern.to_owned())
-                .push(" ESCAPE '\\' OR EXISTS (SELECT 1 FROM send_records sr \
-                        WHERE sr.batch_id = b.id AND (sr.first_name LIKE ")
+                .push(
+                    " ESCAPE '\\' OR EXISTS (SELECT 1 FROM send_records sr \
+                        WHERE sr.batch_id = b.id AND (sr.first_name LIKE ",
+                )
                 .push_bind(pattern.to_owned())
                 .push(" ESCAPE '\\' OR sr.last_name LIKE ")
                 .push_bind(pattern.to_owned())
@@ -291,8 +282,7 @@ impl SendRepository for SqliteSends {
             .map(record_from_row)
             .collect::<CoreResult<Vec<_>>>()?;
 
-        let mut count_query =
-            QueryBuilder::<Sqlite>::new("SELECT COUNT(*) FROM send_records");
+        let mut count_query = QueryBuilder::<Sqlite>::new("SELECT COUNT(*) FROM send_records");
         push_record_filters(&mut count_query, id, pattern.as_deref());
         let total: i64 = count_query
             .build_query_scalar()
@@ -310,11 +300,12 @@ impl SendRepository for SqliteSends {
 
     async fn emails(&self, id: i64) -> CoreResult<Vec<String>> {
         Self::fetch_batch(self.store.pool(), id).await?;
-        let emails = sqlx::query_scalar("SELECT email FROM send_records WHERE batch_id = ? ORDER BY id")
-            .bind(id)
-            .fetch_all(self.store.pool())
-            .await
-            .map_err(StoreError::from)?;
+        let emails =
+            sqlx::query_scalar("SELECT email FROM send_records WHERE batch_id = ? ORDER BY id")
+                .bind(id)
+                .fetch_all(self.store.pool())
+                .await
+                .map_err(StoreError::from)?;
         Ok(emails)
     }
 
@@ -394,11 +385,7 @@ impl PendingSendBatch for SqlitePendingSendBatch {
     }
 }
 
-fn push_record_filters(
-    query: &mut QueryBuilder<Sqlite>,
-    batch_id: i64,
-    search: Option<&str>,
-) {
+fn push_record_filters(query: &mut QueryBuilder<Sqlite>, batch_id: i64, search: Option<&str>) {
     query.push(" WHERE batch_id = ").push_bind(batch_id);
     if let Some(pattern) = search {
         query

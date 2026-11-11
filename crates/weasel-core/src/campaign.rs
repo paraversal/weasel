@@ -231,10 +231,7 @@ fn cleaned_campaign_name(raw: &str) -> CoreResult<String> {
     if name.chars().count() > limits::CAMPAIGN_NAME_MAX {
         return Err(CoreError::validation(
             "name",
-            format!(
-                "is longer than {} characters",
-                limits::CAMPAIGN_NAME_MAX
-            ),
+            format!("is longer than {} characters", limits::CAMPAIGN_NAME_MAX),
         ));
     }
     Ok(name.to_owned())
@@ -259,7 +256,12 @@ mod tests {
     #[test]
     fn campaign_transition_table() {
         use CampaignStatus::{Active, Archived, Draft};
-        let allowed = [(Draft, Active), (Draft, Archived), (Active, Archived), (Archived, Active)];
+        let allowed = [
+            (Draft, Active),
+            (Draft, Archived),
+            (Active, Archived),
+            (Archived, Active),
+        ];
         for from in [Draft, Active, Archived] {
             for to in [Draft, Active, Archived] {
                 assert_eq!(

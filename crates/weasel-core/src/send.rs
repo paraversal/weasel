@@ -122,10 +122,7 @@ impl SendService {
         if note.chars().count() > limits::BATCH_NOTE_MAX {
             return Err(CoreError::validation(
                 "note",
-                format!(
-                    "is longer than {} characters",
-                    limits::BATCH_NOTE_MAX
-                ),
+                format!("is longer than {} characters", limits::BATCH_NOTE_MAX),
             ));
         }
         self.repo

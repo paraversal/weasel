@@ -20,6 +20,8 @@ use weasel_core::{
 use weasel_store::{OpenOptions, Store, open};
 
 pub mod assert;
+pub mod builders;
+pub mod services;
 
 /// A migrated SQLite database in a temporary directory, deleted on drop.
 pub struct TempDb {

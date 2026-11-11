@@ -6,10 +6,10 @@ use proptest::prelude::*;
 use weasel_core::{
     email::EmailAddress,
     enums::{ContactSource, ContactStatus, ImportScope},
-    identity::{IdentityStrategy, NameIdentity, NAME_IDENTITY_ID},
+    identity::{IdentityStrategy, NAME_IDENTITY_ID, NameIdentity},
     import::{
-        ColumnMapping, ConflictAction, ConflictResolution, ContactOp, ContactRef,
-        ImportPlan, NormalizedRow, PlanAction, ReconcileSnapshot,
+        ColumnMapping, ConflictAction, ConflictResolution, ContactOp, ContactRef, ImportPlan,
+        NormalizedRow, PlanAction, ReconcileSnapshot,
     },
     ports::NoProgress,
 };

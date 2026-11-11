@@ -26,4 +26,14 @@ describe('mock ipc', () => {
 		expect(handlers['plugin:event|listen']).toBeTypeOf('function');
 		expect(handlers['plugin:event|unlisten']).toBeTypeOf('function');
 	});
+
+	it('reports the schema version and domain counts', () => {
+		const health = mockHandlers().app_health({}) as Record<string, unknown>;
+		expect(health).toMatchObject({
+			dbOk: true,
+			schemaVersion: 2,
+			contactCount: 0,
+			pendingImports: 0
+		});
+	});
 });
