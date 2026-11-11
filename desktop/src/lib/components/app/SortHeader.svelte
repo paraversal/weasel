@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
+	import ArrowUpDownIcon from '@lucide/svelte/icons/arrow-up-down';
 
 	import * as Table from '$lib/components/ui/table/index.js';
 
@@ -36,14 +37,19 @@
 >
 	<a
 		href={hrefFor(next)}
+		title="Sort by {label.toLowerCase()}"
 		class={[
-			'inline-flex items-center gap-1 hover:text-foreground',
-			active ? 'text-foreground' : ''
+			'-mx-2 inline-flex h-7 cursor-pointer items-center gap-1 rounded-md px-2 hover:bg-muted hover:text-foreground',
+			active ? 'bg-muted/60 text-foreground' : 'text-muted-foreground'
 		]}
 	>
 		{label}
-		{#if dir === 'asc'}<ArrowUpIcon class="size-3.5" />{:else if dir === 'desc'}<ArrowDownIcon
-				class="size-3.5"
-			/>{/if}
+		{#if dir === 'asc'}
+			<ArrowUpIcon class="size-3.5" />
+		{:else if dir === 'desc'}
+			<ArrowDownIcon class="size-3.5" />
+		{:else}
+			<ArrowUpDownIcon class="size-3.5 opacity-60" />
+		{/if}
 	</a>
 </Table.Head>

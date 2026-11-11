@@ -247,7 +247,9 @@ pub enum ContactSort {
     LastNameAsc,
     LastNameDesc,
     AddedDesc,
+    AddedAsc,
     EmailAsc,
+    EmailDesc,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

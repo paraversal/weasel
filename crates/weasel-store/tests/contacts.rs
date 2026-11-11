@@ -422,6 +422,36 @@ async fn list_filters_sorts_and_pages() {
         ]
     );
 
+    let by_email_desc = harness
+        .service
+        .list(&ContactQuery {
+            sort: ContactSort::EmailDesc,
+            ..ContactQuery::default()
+        })
+        .await
+        .unwrap();
+    let reversed: Vec<&str> = by_email_desc
+        .items
+        .iter()
+        .map(|c| c.email_normalized.as_str())
+        .collect();
+    let mut expected = emails.clone();
+    expected.reverse();
+    assert_eq!(reversed, expected);
+
+    let by_added_asc = harness
+        .service
+        .list(&ContactQuery {
+            sort: ContactSort::AddedAsc,
+            ..ContactQuery::default()
+        })
+        .await
+        .unwrap();
+    let ids_asc: Vec<i64> = by_added_asc.items.iter().map(|c| c.id).collect();
+    let mut ascending = ids_asc.clone();
+    ascending.sort_unstable();
+    assert_eq!(ids_asc, ascending, "ties break by id, oldest first");
+
     let paged = harness
         .service
         .list(&ContactQuery {

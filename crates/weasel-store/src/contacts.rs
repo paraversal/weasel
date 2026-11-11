@@ -77,7 +77,9 @@ impl ContactRepository for SqliteContacts {
                 " ORDER BY last_name COLLATE NOCASE DESC, first_name COLLATE NOCASE ASC, id ASC"
             }
             ContactSort::AddedDesc => " ORDER BY date_added DESC, id DESC",
+            ContactSort::AddedAsc => " ORDER BY date_added ASC, id ASC",
             ContactSort::EmailAsc => " ORDER BY email_normalized ASC, id ASC",
+            ContactSort::EmailDesc => " ORDER BY email_normalized DESC, id DESC",
         });
         rows_query
             .push(" LIMIT ")

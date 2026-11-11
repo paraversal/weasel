@@ -382,4 +382,5 @@ phases 6–7.
 | 2026-11-11 | M4 | `86d3066` imports list/detail/discard and the wizard (`ImportWizard`, 5 tests); imports detail key fix (§8.14) |
 | 2026-11-11 | M5 | Dashboard stats and quick actions; ADR 0007; notes in 05/06/09/README; unused primitives removed (§8.12) |
 | 2026-11-11 | Smoke feedback | Owner: import batch not shown and no sort UI on Freshies. Added an Import column (links to the import, "Added by hand" otherwise), an import filter (`?import=`) and sortable Name/Email/Added headers (`?sort=`) |
+| 2026-11-11 | Smoke feedback | Owner: email sorts one way only; sortable headers don't look clickable. Added `ContactSort::{AddedAsc, EmailDesc}` (core, store, DTO, bindings; store test extended) and button-styled headers with a ↕ hint. First Rust change in 08-exec |
 | 2026-11-11 | §7 | `pnpm verify` green. **Manual smoke not run by the executing agent**: it could not see the Tauri window. 09 UI items stay unticked until the owner runs §7 |

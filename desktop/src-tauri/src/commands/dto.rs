@@ -65,7 +65,7 @@ macro_rules! dto_enum_camel {
 
 dto_enum!(ContactStatusDto <=> ContactStatus { Active, Removed, Archived });
 dto_enum!(ContactSourceDto <=> ContactSource { Import, Manual, Api });
-dto_enum_camel!(ContactSortDto <=> ContactSort { LastNameAsc, LastNameDesc, AddedDesc, EmailAsc });
+dto_enum_camel!(ContactSortDto <=> ContactSort { LastNameAsc, LastNameDesc, AddedDesc, AddedAsc, EmailAsc, EmailDesc });
 dto_enum!(
     EmailChangeReasonDto <=> EmailChangeReason { Import, Manual, Merge, Correction }
 );
@@ -210,7 +210,9 @@ mod tests {
         same(ContactSortDto::LastNameAsc, ContactSort::LastNameAsc);
         same(ContactSortDto::LastNameDesc, ContactSort::LastNameDesc);
         same(ContactSortDto::AddedDesc, ContactSort::AddedDesc);
+        same(ContactSortDto::AddedAsc, ContactSort::AddedAsc);
         same(ContactSortDto::EmailAsc, ContactSort::EmailAsc);
+        same(ContactSortDto::EmailDesc, ContactSort::EmailDesc);
 
         same(EmailChangeReasonDto::Import, EmailChangeReason::Import);
         same(EmailChangeReasonDto::Manual, EmailChangeReason::Manual);

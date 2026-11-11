@@ -46,7 +46,9 @@
 		lastNameAsc: 'asc',
 		lastNameDesc: 'desc',
 		emailAsc: 'asc',
-		addedDesc: 'desc'
+		emailDesc: 'desc',
+		addedDesc: 'desc',
+		addedAsc: 'asc'
 	};
 	const sort = $derived.by((): ContactSortDto => {
 		const raw = param(page.url, 'sort');
@@ -138,7 +140,7 @@
 					/>
 					<SortHeader
 						label="Email"
-						sorts={['emailAsc']}
+						sorts={['emailAsc', 'emailDesc']}
 						current={sort}
 						direction={sorts}
 						hrefFor={sortHref}
@@ -147,7 +149,7 @@
 					<Table.Head>Import</Table.Head>
 					<SortHeader
 						label="Added"
-						sorts={['addedDesc']}
+						sorts={['addedDesc', 'addedAsc']}
 						current={sort}
 						direction={sorts}
 						hrefFor={sortHref}

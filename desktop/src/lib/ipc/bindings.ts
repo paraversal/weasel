@@ -498,7 +498,7 @@ export type ContactRefDto = {
 	source: ContactSourceDto,
 };
 
-export type ContactSortDto = "lastNameAsc" | "lastNameDesc" | "addedDesc" | "emailAsc";
+export type ContactSortDto = "lastNameAsc" | "lastNameDesc" | "addedDesc" | "addedAsc" | "emailAsc" | "emailDesc";
 
 export type ContactSourceDto = "import" | "manual" | "api";
 
