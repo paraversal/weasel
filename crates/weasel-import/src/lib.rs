@@ -9,6 +9,7 @@ pub mod header;
 pub mod mapping;
 pub mod normalize;
 pub mod read;
+pub mod reconcile;
 pub mod source;
 
 pub use header::{HeaderAnalysis, analyze};
