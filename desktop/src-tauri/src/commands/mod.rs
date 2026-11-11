@@ -11,6 +11,7 @@ pub mod campaigns;
 pub mod contacts;
 pub mod dto;
 pub mod imports;
+pub mod search;
 pub mod send_batches;
 pub mod settings;
 #[cfg(test)]
@@ -26,6 +27,7 @@ pub fn feature_descriptors() -> Vec<FeatureDescriptor> {
         campaigns::descriptor(),
         contacts::descriptor(),
         imports::descriptor(),
+        search::descriptor(),
         send_batches::descriptor(),
         settings::descriptor(),
         // @gen:descriptors
@@ -45,6 +47,7 @@ pub fn builder() -> tauri_specta::Builder<tauri::Wry> {
             app::app_health,
             app::app_features,
             app::app_open_data_dir,
+            app::app_backup_create,
             campaigns::campaigns_list,
             campaigns::campaigns_get,
             campaigns::campaigns_create,
@@ -69,6 +72,7 @@ pub fn builder() -> tauri_specta::Builder<tauri::Wry> {
             imports::imports_list,
             imports::imports_get,
             imports::imports_plan_rows,
+            search::search_global,
             send_batches::send_batches_list,
             send_batches::send_batches_get,
             send_batches::send_batches_recipients,

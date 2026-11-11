@@ -1,16 +1,18 @@
 //! Application-level commands: identity, health, feature registry, data folder.
 
+use std::path::Path;
+
 use serde::Serialize;
 use tauri::{AppHandle, State};
 use tauri_plugin_opener::OpenerExt;
 use weasel_core::FeatureDescriptor;
 
 use crate::error::AppError;
-use crate::state::AppState;
+use crate::state::{AppState, Services};
 
 /// Version of the IPC surface, independent of the crate version. Bump on breaking
 /// contract changes; the frontend refuses to run against an older backend.
-pub const API_VERSION: &str = "0.1.0";
+pub const API_VERSION: &str = "0.2.0";
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -59,6 +61,14 @@ impl From<FeatureDescriptor> for FeatureDescriptorDto {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupDto {
+    pub path: String,
+    pub bytes: u64,
+    pub created_at: i64,
+}
+
 pub fn descriptor() -> FeatureDescriptor {
     FeatureDescriptor {
         id: "app",
@@ -68,6 +78,7 @@ pub fn descriptor() -> FeatureDescriptor {
             "app_health",
             "app_features",
             "app_open_data_dir",
+            "app_backup_create",
         ],
         events: &[],
     }
@@ -145,4 +156,50 @@ pub async fn app_open_data_dir(app: AppHandle, state: State<'_, AppState>) -> Re
             None::<String>,
         )
         .map_err(AppError::internal)
+}
+
+/// Writes a consistent snapshot next to the database. No event: backups are not part of
+/// the domain state the UI watches.
+#[tauri::command]
+#[specta::specta]
+pub async fn app_backup_create(state: State<'_, AppState>) -> Result<BackupDto, AppError> {
+    backup(state.services()?, &state.paths.backups_dir).await
+}
+
+pub(crate) async fn backup(services: &Services, dir: &Path) -> Result<BackupDto, AppError> {
+    let path = services
+        .store
+        .backup_now(dir)
+        .await
+        .map_err(|err| AppError::from(weasel_core::CoreError::from(err)))?;
+    let bytes = std::fs::metadata(&path)
+        .map_err(weasel_core::CoreError::io)
+        .map_err(AppError::from)?
+        .len();
+    Ok(BackupDto {
+        path: path.to_string_lossy().into_owned(),
+        bytes,
+        created_at: services.clock.now_ms(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
+    use crate::commands::testing::harness;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn backup_writes_a_non_empty_file() {
+        let harness = harness().await;
+        let dir = harness.db.path().join("backups");
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let backup = backup(&harness.services, &dir).await.unwrap();
+        assert!(std::path::Path::new(&backup.path).is_file());
+        assert!(backup.bytes > 0);
+        assert_eq!(backup.created_at, 1_700_000_000_000);
+    }
 }

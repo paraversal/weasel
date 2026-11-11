@@ -52,7 +52,6 @@ pub struct AppState {
     pub paths: DataPaths,
     pub boot: Result<Services, BootError>,
     pub events: EventBus,
-    #[allow(dead_code)] // imports commands read it in M3
     pub picked_sources: PickedSources,
 }
 

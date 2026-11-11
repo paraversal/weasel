@@ -61,7 +61,7 @@ export function mockHandlers(): Record<string, Handler> {
 			name: 'Weasel',
 			version: '0.0.0-mock',
 			tauriVersion: 'mock',
-			apiVersion: '0.1.0',
+			apiVersion: '0.2.0',
 			dbPath: '/mock/weasel.sqlite3',
 			dataDir: '/mock'
 		}),

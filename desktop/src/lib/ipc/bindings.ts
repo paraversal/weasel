@@ -22,6 +22,11 @@ export const commands = {
 	 *  when the database is broken.
 	 */
 	appOpenDataDir: () => typedError<null, AppError_Serialize>(__TAURI_INVOKE("app_open_data_dir")),
+	/**
+	 *  Writes a consistent snapshot next to the database. No event: backups are not part of
+	 *  the domain state the UI watches.
+	 */
+	appBackupCreate: () => typedError<BackupDto, AppError_Serialize>(__TAURI_INVOKE("app_backup_create")),
 	campaignsList: (request: CampaignListRequest_Deserialize) => typedError<PageDto<CampaignSummaryDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("campaigns_list", { request })),
 	campaignsGet: (request: CampaignGetRequest) => typedError<CampaignDto, AppError_Serialize>(__TAURI_INVOKE("campaigns_get", { request })),
 	campaignsCreate: (request: CampaignCreateRequest_Deserialize) => typedError<CampaignDto, AppError_Serialize>(__TAURI_INVOKE("campaigns_create", { request })),
@@ -46,6 +51,7 @@ export const commands = {
 	importsList: (request: ImportListRequest_Deserialize) => typedError<PageDto<ImportBatchDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("imports_list", { request })),
 	importsGet: (request: ImportGetRequest_Deserialize) => typedError<ImportBatchDetailDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("imports_get", { request })),
 	importsPlanRows: (request: ImportPlanRowsRequest_Deserialize) => typedError<PageDto<PlannedRowDto>, AppError_Serialize>(__TAURI_INVOKE("imports_plan_rows", { request })),
+	searchGlobal: (request: SearchRequest_Deserialize) => typedError<SearchResultsDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("search_global", { request })),
 	sendBatchesList: (request: SendBatchListRequest_Deserialize) => typedError<PageDto<SendBatchDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("send_batches_list", { request })),
 	sendBatchesGet: (request: SendBatchGetRequest) => typedError<SendBatchDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("send_batches_get", { request })),
 	sendBatchesRecipients: (request: SendBatchRecipientsRequest_Deserialize) => typedError<PageDto<SendRecordDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("send_batches_recipients", { request })),
@@ -189,6 +195,12 @@ export type AuditEventDto_Serialize = {
 	before: Value | null,
 	after: Value | null,
 	metadata: Value,
+};
+
+export type BackupDto = {
+	path: string,
+	bytes: number,
+	createdAt: number,
 };
 
 export type BatchCountDto = {
@@ -788,6 +800,32 @@ export type RowErrorDto = {
 export type SampleRowDto = {
 	row: number,
 	cells: string[],
+};
+
+export type SearchRequest = SearchRequest_Serialize | SearchRequest_Deserialize;
+
+export type SearchRequest_Deserialize = {
+	term?: string,
+	limit?: number | null,
+};
+
+export type SearchRequest_Serialize = {
+	term: string,
+	limit: number | null,
+};
+
+export type SearchResultsDto = SearchResultsDto_Serialize | SearchResultsDto_Deserialize;
+
+export type SearchResultsDto_Deserialize = {
+	contacts: ContactDto_Deserialize[],
+	campaigns: CampaignDto[],
+	sendBatches: SendBatchDto_Deserialize[],
+};
+
+export type SearchResultsDto_Serialize = {
+	contacts: ContactDto_Serialize[],
+	campaigns: CampaignDto[],
+	sendBatches: SendBatchDto_Serialize[],
 };
 
 export type SendBatchDto = SendBatchDto_Serialize | SendBatchDto_Deserialize;
