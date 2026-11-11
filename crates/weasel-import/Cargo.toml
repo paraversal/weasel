@@ -1,0 +1,13 @@
+[package]
+name = "weasel-import"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+weasel-core.workspace = true
+
+[lints]
+workspace = true
