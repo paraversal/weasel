@@ -9,9 +9,19 @@
 //! - New feature modules are added below the `@gen:modules` marker by
 //!   `pnpm gen feature`.
 
+pub mod audit;
+pub mod campaign;
+pub mod contact;
+pub mod email;
+pub mod enums;
 pub mod error;
 pub mod feature;
+pub mod identity;
+pub mod import;
+pub mod limits;
 pub mod ports;
+pub mod query;
+pub mod send;
 pub mod settings;
 // @gen:modules
 

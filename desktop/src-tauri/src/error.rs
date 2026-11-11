@@ -20,7 +20,6 @@ pub enum ErrorCode {
     InvalidState,
     Io,
     /// Reserved by the import plan; part of the published wire contract.
-    #[allow(dead_code)]
     Import,
     #[allow(dead_code)]
     Cancelled,
@@ -100,6 +99,12 @@ impl From<CoreError> for AppError {
                 message,
                 details: None,
                 retryable: true,
+            },
+            CoreError::Import { row, reason } => Self {
+                code: ErrorCode::Import,
+                message: reason,
+                details: Some(serde_json::json!({ "row": row })),
+                retryable: false,
             },
             CoreError::Internal(source) => Self::internal(source),
         }
@@ -216,6 +221,14 @@ mod tests {
                 false,
             ),
             (CoreError::io("disk full"), ErrorCode::Io, true),
+            (
+                CoreError::Import {
+                    row: Some(7),
+                    reason: "email is empty".to_owned(),
+                },
+                ErrorCode::Import,
+                false,
+            ),
             (
                 CoreError::Internal(Box::new(std::io::Error::other("boom"))),
                 ErrorCode::Internal,

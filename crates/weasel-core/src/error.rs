@@ -16,6 +16,9 @@ pub enum CoreError {
     InvalidState(String),
     #[error("i/o: {0}")]
     Io(String),
+    /// A single spreadsheet row failed. `row` is the 1-based sheet row when known.
+    #[error("import error: {reason}")]
+    Import { row: Option<u32>, reason: String },
     #[error(transparent)]
     Internal(Box<dyn std::error::Error + Send + Sync>),
 }
