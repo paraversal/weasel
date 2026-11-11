@@ -12,7 +12,30 @@ type SettingsState = {
 	featureFlags: Record<string, boolean>;
 };
 
+const STORAGE_KEY = 'weasel.mock.settings';
 const initialTheme = 'system' as const;
+
+/** Persist across reloads so e2e can assert that a write survives; the real store uses SQLite. */
+function readSettings(): SettingsState {
+	if (typeof localStorage === 'undefined') return { theme: initialTheme, featureFlags: {} };
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (!raw) return { theme: initialTheme, featureFlags: {} };
+		const parsed = JSON.parse(raw) as Partial<SettingsState>;
+		const theme = parsed.theme;
+		return {
+			theme: theme === 'light' || theme === 'dark' ? theme : initialTheme,
+			featureFlags: parsed.featureFlags ?? {}
+		};
+	} catch {
+		return { theme: initialTheme, featureFlags: {} };
+	}
+}
+
+function writeSettings(settings: SettingsState): void {
+	if (typeof localStorage === 'undefined') return;
+	localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
 
 const features = [
 	{
@@ -30,7 +53,7 @@ const features = [
 ];
 
 export function mockHandlers(): Record<string, Handler> {
-	let settings: SettingsState = { theme: initialTheme, featureFlags: {} };
+	let settings: SettingsState = readSettings();
 
 	return {
 		app_info: () => ({
@@ -54,6 +77,7 @@ export function mockHandlers(): Record<string, Handler> {
 				theme: patch.theme ?? settings.theme,
 				featureFlags: { ...settings.featureFlags, ...patch.featureFlags }
 			};
+			writeSettings(settings);
 			return settings;
 		},
 		// The event plugin is invoked from `listen`; no payloads are delivered in mock mode.

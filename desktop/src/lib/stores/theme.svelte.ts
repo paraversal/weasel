@@ -1,4 +1,5 @@
 import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
+import { getContext, setContext } from 'svelte';
 
 import { commands } from '$lib/ipc/bindings';
 import { call } from '$lib/ipc/client';
@@ -92,4 +93,15 @@ export function createThemeController(): ThemeController {
 			mutation.mutate(next);
 		}
 	};
+}
+
+const THEME_CONTEXT = Symbol('weasel.theme');
+
+/** One controller per window: every theme control must share the same optimistic state. */
+export function provideTheme(theme: ThemeController): void {
+	setContext(THEME_CONTEXT, theme);
+}
+
+export function useTheme(): ThemeController {
+	return getContext<ThemeController>(THEME_CONTEXT);
 }

@@ -3,7 +3,7 @@
 
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import { appQueries } from '$lib/ipc/queries';
-	import { createThemeController } from '$lib/stores/theme.svelte';
+	import { createThemeController, provideTheme } from '$lib/stores/theme.svelte';
 
 	import AppShell from './AppShell.svelte';
 	import BootError from './BootError.svelte';
@@ -11,6 +11,7 @@
 	let { children }: { children: import('svelte').Snippet } = $props();
 
 	const theme = createThemeController();
+	provideTheme(theme);
 	const health = createQuery(() => appQueries.health());
 	const info = createQuery(() => appQueries.info());
 
