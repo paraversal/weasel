@@ -68,7 +68,7 @@
 		<circle cx="-34" cy="16" r="8" fill="#f2b8a6" />
 		<circle cx="34" cy="16" r="8" fill="#f2b8a6" />
 	{:else}
-		<g style:transform="translate({eyeX}px, {eyeY}px)" class="transition-transform duration-100">
+		<g style:transform="translate({eyeX}px, {eyeY}px)">
 			<ellipse cx="-25" cy="-22" rx="8.5" ry="9.5" fill={eye} />
 			<circle cx="-22" cy="-25.5" r="2.7" fill="#fff" />
 			<ellipse cx="25" cy="-22" rx="8.5" ry="9.5" fill={eye} />
