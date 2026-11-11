@@ -34,7 +34,7 @@ erDiagram
     CONTACTS ||--o{ AUDIT_EVENTS : "entity"
 ```
 
-## Initial schema (`migrations/0001_initial.sql`)
+## Initial schema (`migrations/0002_domain.sql`)
 
 ```sql
 -- One row per import/reconciliation run. Draft rows hold preview plans; applied rows
@@ -42,7 +42,7 @@ erDiagram
 CREATE TABLE import_batches (
     id             INTEGER PRIMARY KEY,
     source_kind    TEXT    NOT NULL
-                   CHECK (source_kind IN ('xlsx', 'xls', 'ods', 'csv', 'legacy', 'manual')),
+                   CHECK (source_kind IN ('xlsx', 'xls', 'ods', 'csv', 'manual')),
     source_name    TEXT    NOT NULL,
     source_path    TEXT,
     file_hash      TEXT,
@@ -201,6 +201,16 @@ CREATE TABLE app_meta (
 `sqlx` creates its own `_sqlx_migrations` table. Application migrations must never edit
 an already shipped file; correctness changes go in a new migration.
 
+### Schema as executed
+
+`0002_domain.sql` differs from the DDL above in three deliberate ways (rationale in
+[03-exec.md](03-exec.md) §8):
+
+1. `source_kind` has no `legacy` value (ADR 0006).
+2. `import_batches` adds `sheet_name` and `invalid_count` for previews and history.
+3. The open-history, send-snapshot and audit-append-only invariants are enforced by a
+   unique index and triggers, not by convention alone.
+
 ## Invariants
 
 1. A contact has exactly one current email, unique among `active`/`removed` contacts.
@@ -277,46 +287,11 @@ Plan actions:
 The plan is serialized into `import_batches.plan_json` so the review screen can be
 resumed, and the applied counts are stored for history.
 
-> **Premise change (2026-11-11):** no legacy data support — see
-> [ADR 0006](../adr/0006-clean-rewrite-no-legacy-data.md). The section below is
-> historical; `legacy_import` is dropped and `source_kind = 'legacy'` is removed when
-> this doc is executed.
+## Legacy data
 
-## Legacy data mapping
-
-`weasel-store/src/legacy_import.rs` imports the TUI database once. It runs only into an
-empty application database and refuses to overwrite an existing one without an explicit
-flag and a backup.
-
-| Legacy | New | Notes |
-| --- | --- | --- |
-| `freshies` | `contacts` | Preserve ids. `date_added` parsed from Python local datetime to UTC ms |
-| `freshies.batch_id` | `import_batches` | One batch per distinct id; `source_kind='legacy'`, name "Legacy batch N" |
-| `freshies.removed` | `contacts.status` | `1` → `removed`, else `active` |
-| `freshies.email` | `contacts` + `contact_email_history` | Seed history with `valid_from = date_added` |
-| `campaigns.name` | `campaigns.name` | — |
-| `campaigns.info` | `campaigns.description` | — |
-| `campaigns.text` | `campaigns.body` | Empty in practice |
-| `pastes` | `send_batches` | Campaign inferred from its send records; verify all rows agree |
-| `campaigns_sent_instances` | `send_records` | Snapshot name/email from the live contact at migration time |
-| `campaigns_sent_instances.paste_id` | `send_batches.id` | Preserve ids |
-| `campaigns_sent_instances.student_id` | `send_records.contact_id` | Preserve person link |
-| `infos` | — | Unused |
-
-Missing timestamps in legacy campaigns and batches are set to the migration time and
-flagged in `audit_events.metadata_json` (`{"migrated": true, "original_timestamp":
-"unknown"}`) so nobody mistakes them for real dates.
-
-Migration validation (must pass before commit):
-
-- contact count equals legacy `freshies` count;
-- campaign count equals legacy `campaigns` count;
-- send-record count equals legacy `campaigns_sent_instances` count;
-- every send record resolves to a contact and a batch;
-- every batch's records belong to one campaign;
-- spot-check a sample of emails and names;
-- `PRAGMA foreign_key_check` returns no rows;
-- source database hash is recorded in `app_meta` and the import audit event.
+Not imported. The Python TUI is a behavioural reference only; see
+[ADR 0006](../adr/0006-clean-rewrite-no-legacy-data.md). Existing users re-import
+their rosters through the new import flow.
 
 ## Additive schema for planned features
 

@@ -28,7 +28,9 @@ describe('mock ipc', () => {
 	});
 
 	it('reports the schema version and domain counts', () => {
-		const health = mockHandlers().app_health({}) as Record<string, unknown>;
+		const handler = mockHandlers().app_health;
+		if (!handler) throw new Error('app_health handler missing');
+		const health = handler({}) as Record<string, unknown>;
 		expect(health).toMatchObject({
 			dbOk: true,
 			schemaVersion: 2,

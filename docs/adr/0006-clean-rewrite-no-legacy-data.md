@@ -74,6 +74,18 @@ durable home. Details and rationale: `docs/rewrite/02-exec.md` §9.
 11. Tauri-backed adapters live in `desktop/src-tauri/src/adapters.rs`;
     `weasel-platform` stays Tauri-free.
 
+## Related decisions made while executing 03-exec
+
+12. `identity_key` is a plain normalized string (`lower(first)\x1flast`), not a hash;
+    the fixed strategy id `name-v1` is recorded in `app_meta`. Configuration and
+    recomputation are deferred to phase 5.
+13. `ContactImporter` from 05 is not a core port. `SourceReader` lives in
+    `weasel-import`, because parsing is the only consumer and core stays parsing-free.
+14. The planner adds `AmbiguousHistory`, `ContactMatchedTwice`, empty-roster refusal,
+    a large-removal warning and invalid-row protection beyond 03's matching rules.
+15. Campaign audiences are active contacts only; removed people are not silently
+    included in an unsent count (01 defect 2).
+
 ## Alternatives considered
 
 - **One-shot legacy import** (the original plan): rejected — it costs a module, a

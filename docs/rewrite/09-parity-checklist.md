@@ -4,8 +4,9 @@ A living checklist used to decide when the rewrite can replace the TUI. Each ite
 evidence: a passing test, a recorded manual check, or a linked artifact. Do not check an
 item because the code exists.
 
-Status: **phase 1 implemented** (see [02-exec.md](02-exec.md)); phases 2–7 not started.
-Phase numbers refer to [06-delivery-plan.md](06-delivery-plan.md).
+Status: **phase 2 (data core) implemented** — see [03-exec.md](03-exec.md); phases 3–7
+not started (read/write/reconciliation UI is phase 3–5). Phase numbers refer to
+[06-delivery-plan.md](06-delivery-plan.md).
 
 > **Premise change (2026-11-11):** no legacy data support — see
 > [ADR 0006](../adr/0006-clean-rewrite-no-legacy-data.md). Items about importing or
@@ -44,13 +45,23 @@ Phase numbers refer to [06-delivery-plan.md](06-delivery-plan.md).
 
 ## Data safety (phase 2)
 
-- [ ] All migrations run from zero on a fresh database.
-- [ ] A pre-migration backup is created and restore is exercised.
-- [ ] `PRAGMA foreign_keys=ON` and `PRAGMA foreign_key_check` is clean after every write.
-- [ ] Legacy import matches contact/campaign/batch/record counts.
-- [ ] Re-running legacy import does not duplicate data.
-- [ ] A forced mid-transaction failure leaves no partial import.
-- [ ] Email changes append history; send records keep snapshots.
+- [x] All migrations run from zero on a fresh database.
+      Evidence: every `TempDb::new()` applies `0001_app.sql` + `0002_domain.sql`;
+      `store::tests::schema::schema_snapshot_is_stable`.
+- [x] A pre-migration backup is created and restore is exercised.
+      Evidence: `store::tests::upgrade::v1_database_is_backed_up_before_upgrade`,
+      `store::tests::restore::restoring_a_backup_replaces_the_database`.
+- [x] `PRAGMA foreign_keys=ON` and `PRAGMA foreign_key_check` is clean after every write.
+      Evidence: `Store::open` sets it per connection; `assert_fk_clean`/`assert_integrity`
+      run in `contacts`, `sends`, `campaigns` and `import::apply` tests.
+- [ ] ~~Legacy import matches contact/campaign/batch/record counts.~~ void (ADR 0006).
+- [ ] ~~Re-running legacy import does not duplicate data.~~ void (ADR 0006).
+- [x] A forced mid-transaction failure leaves no partial import.
+      Evidence: `import::apply::a_mid_transaction_failure_rolls_back_every_row`.
+- [x] Email changes append history; send records keep snapshots.
+      Evidence: `contacts::email_change_closes_history_and_is_audited`,
+      `schema::send_record_snapshot_is_immutable`,
+      `sends::recopy_returns_the_original_snapshot`.
 
 ## Read parity (phase 3)
 
@@ -71,25 +82,45 @@ Phase numbers refer to [06-delivery-plan.md](06-delivery-plan.md).
 - [ ] Prepare send previews recipients and disables when none are unsent.
 - [ ] Prepare send writes exactly the previewed addresses to the clipboard.
 - [ ] Prepare send creates one batch and one immutable record per recipient.
+      Evidence (backend): `sends::prepare_send_copies_before_commit_and_is_not_repeatable`,
+      `schema::send_record_snapshot_is_immutable`.
 - [ ] Clipboard failure creates no batch.
+      Evidence (backend): `sends::clipboard_failure_records_nothing`.
 - [ ] Re-copying a batch returns the same snapshotted addresses.
+      Evidence (backend): `sends::recopy_returns_the_original_snapshot`.
 - [ ] Import wizard maps columns and previews add/update/remove/no-op counts.
 - [ ] Applying an import is atomic and idempotent for an unchanged sheet.
+      Evidence (backend): `import::apply::end_to_end_add_previews_then_applies`,
+      `import::apply::re_previewing_the_same_file_changes_nothing`.
 - [ ] Discarding a draft leaves contacts untouched.
+      Evidence (backend): `import::apply::discarding_drops_the_plan_and_leaves_contacts_alone`.
 - [ ] Manual contact create/edit works and never appears in roster removals.
+      Evidence (backend): `import::apply::a_roster_import_never_removes_manual_contacts`.
 - [ ] Mark removed / restore / archive work with confirmation.
+      Evidence (backend): `contacts::archiving_frees_the_email_but_unarchiving_into_a_taken_one_conflicts`,
+      `import::apply::roster_removal_keeps_send_history_and_a_returnee_is_restored`.
 - [ ] Every mutation writes an audit event.
+      Evidence (backend): `import::apply::each_operation_and_the_apply_are_audited`,
+      `sends::campaign_edit_is_audited`, `contacts::email_change_closes_history_and_is_audited`.
 - [ ] Backend events invalidate the right queries without full reloads.
 
 ## Reconciliation (phase 5)
 
 - [ ] Changed email updates the same contact and records history.
+      Evidence (backend): `import::apply::changing_an_email_keeps_the_contact_and_closes_history`.
 - [ ] Roster removal marks contacts removed (never deletes).
+      Evidence (backend): `import::apply::roster_removal_keeps_send_history_and_a_returnee_is_restored`.
 - [ ] Reappearing contact is restored.
+      Evidence (backend): `reconcile_table::removed_people_restore_and_identity_beats_a_new_address`.
 - [ ] Duplicate email rows are rejected with a clear conflict.
+      Evidence (backend): `reconcile_table::new_same_names_and_email_are_classified`.
 - [ ] Ambiguous identity produces a conflict instead of a guess.
+      Evidence (backend): `reconcile_table::identity_and_history_ambiguity_are_conflicts`.
 - [ ] Conflict queue supports link/create/skip and blocks apply while unresolved.
+      Evidence (backend): `reconcile_table::resolutions_become_operations_and_reject_bad_answers`,
+      `import::apply::unresolved_conflicts_leave_the_draft_untouched`.
 - [ ] Delta imports never remove anyone.
+      Evidence (backend): `reconcile_table::rosters_remove_absent_import_contacts_but_deltas_do_not`.
 - [ ] Import undo restores the pre-import state and is audited.
 
 ## Quality and scale (phase 6)

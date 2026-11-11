@@ -9,8 +9,9 @@ This directory is the plan for replacing the Textual TUI with a Tauri 2 + Svelte
 desktop application. It is written to be executed in phases and to make adding new
 features cheap, not just to reproduce the current screens.
 
-**Status:** Phase 1 (architecture) implemented — see [02-exec.md](02-exec.md). The TUI is
-under `legacy/python-tui/`; no application code remains at the repository root.
+**Status:** Phase 2 (data core) implemented — see [03-exec.md](03-exec.md). Phase 1
+architecture is in [02-exec.md](02-exec.md). The TUI is under `legacy/python-tui/`; no
+application code remains at the repository root.
 
 ## Documents
 
@@ -18,11 +19,11 @@ under `legacy/python-tui/`; no application code remains at the repository root.
 | --- | --- |
 | [01-current-state.md](01-current-state.md) | Feature inventory, schema, and defects of the TUI that the rewrite must fix |
 | [02-architecture.md](02-architecture.md) | Stack choice, repository layout, layering, runtime and request flow |
-| [03-data-model.md](03-data-model.md) | Target SQLite schema, invariants, legacy-data mapping |
+| [03-data-model.md](03-data-model.md) | Target SQLite schema, invariants, import model, schema as executed |
 | [04-ipc-and-events.md](04-ipc-and-events.md) | Typed command contract, DTOs, errors, events, bindings generation |
 | [05-extensibility.md](05-extensibility.md) | Feature-module system, extension points, and the recipe for adding a feature |
 | [06-delivery-plan.md](06-delivery-plan.md) | Phased implementation plan with acceptance criteria |
-| [07-testing-migration-release.md](07-testing-migration-release.md) | Test strategy, legacy-DB migration, CI and packaging |
+| [07-testing-migration-release.md](07-testing-migration-release.md) | Test strategy, schema migration, CI and packaging |
 | [08-ui-design.md](08-ui-design.md) | Screen map, interaction design, visual system and keyboard model |
 | [09-parity-checklist.md](09-parity-checklist.md) | Living checklist and TUI decommission gate |
 
@@ -46,8 +47,8 @@ Decisions that are expensive to reverse are recorded as ADRs in [`../adr/`](../a
   its IPC commands, events, navigation entry, command-palette actions, settings section
   and migrations. A generator scaffolds a new module; a registry composes the shell.
 - **Data:** SQLite with forward-only migrations, soft removals, import-history audit,
-  and snapshotted send records so history survives email changes. The legacy database
-  is imported once through a verified migration command.
+  and snapshotted send records so history survives email changes. Existing users
+  re-import their rosters; the legacy database is not migrated (ADR 0006).
 - **Safety:** transactions around every write, a backup before schema migration, and no
   destructive defaults. The current "delete all campaigns" debug action does not carry
   over to the normal UI.
@@ -83,9 +84,8 @@ them:
 3. **Identity columns** — changed-email matching starts with first + last name. If the
    real rosters contain a stable matriculation/student number, include it in the identity
    key during phase 5.
-4. **Legacy database location** — the migration flow supports discovery and explicit
-   file selection. Providing one anonymized real database before phase 2 would improve
-   migration fixtures.
+4. ~~**Legacy database location** — the migration flow supports discovery and explicit
+   file selection.~~ Void (ADR 0006): no legacy database is imported or discovered.
 
 ## Suggested first commit after this plan
 
