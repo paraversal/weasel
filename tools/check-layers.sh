@@ -38,7 +38,7 @@ check() {
 }
 
 check weasel-core tauri sqlx calamine specta tokio weasel-store weasel-import weasel-platform
-check weasel-import tauri sqlx weasel-store weasel-platform
+check weasel-import tauri sqlx weasel-store weasel-platform tokio
 check weasel-store tauri specta weasel-import weasel-platform
 check weasel-platform tauri sqlx weasel-store weasel-import
 

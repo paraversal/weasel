@@ -30,6 +30,14 @@ sqlx = { version = "0.9", default-features = false, features = [
     "json",
 ] }
 tempfile = "3"
+calamine = "0.38"
+csv = "1.4"
+sha2 = "0.11"
+unicode-normalization = "0.1"
+
+# Test and fixture generation only.
+proptest = "1.12"
+rust_xlsxwriter = "0.102"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

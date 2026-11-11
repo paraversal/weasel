@@ -36,7 +36,7 @@ impl SettingsRepository for SqliteSettings {
     }
 
     async fn save(&self, entries: Vec<(String, Value)>, now_ms: i64) -> CoreResult<()> {
-        let mut tx = self.store.pool().begin().await.map_err(StoreError::from)?;
+        let mut tx = self.store.begin_write().await?;
         for (key, value) in entries {
             let value_json = serde_json::to_string(&value).map_err(CoreError::internal)?;
             sqlx::query(
