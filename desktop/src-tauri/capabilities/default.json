@@ -1,0 +1,7 @@
+{
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "default",
+	"description": "Only core + log: the frontend never talks to dialog, clipboard or opener plugins; the backend does through ports.",
+	"windows": ["main"],
+	"permissions": ["core:default", "log:default"]
+}
