@@ -352,6 +352,10 @@ phases 6–7.
 | 9 | Hard delete exposed (04-exec §2.2) | Not in the UI | MVP; archive/remove cover it |
 | 10 | Keyboard model: `g h` = Help, `mod+n`, `mod+shift+i`, density, column visibility | `g h` = History, `?` = Help; the rest deferred | MVP |
 | 11 | 06 phases 3–7, 1.0 definition of done | Replaced by this MVP; backlog in §9 | Owner decision 2026-11-11 |
+| 12 | §3: add table, tabs, select, sheet, label, checkbox | Kept table and label only | Status tabs are links (`FilterTabs`, URL state); native `<select>` for mapping and conflicts |
+| 13 | §5: `wizard.test.ts` | `wizard.svelte.test.ts` | Runes need the happy-dom project, which matches `*.svelte.test.ts` |
+| 14 | §1: no Rust or IPC changes | `keys.imports.detail` now takes the request | The key ignored paging, so member page 2 showed cached page 1 (TS-only fix) |
+| 15 | — | eslint `svelte/no-navigation-without-resolve` ignores links | Runtime hrefs go through `href()`/`go()` in `utils/paths.ts`, which apply the base |
 
 ## 9. Post-MVP backlog (ordered by expected value)
 
@@ -371,4 +375,10 @@ phases 6–7.
 
 | Date | Milestone | Note |
 | --- | --- | --- |
-| | | |
+| 2026-11-11 | M0 | `cbb0d1b` registry, generator, mock, Playwright and boundary test removed (−3.3k lines); `nav.ts`; `pnpm dev:demo`; the plan doc itself is `a5b4d2f` |
+| 2026-11-11 | M1 | `8ae456b` list kit (`components/app/*`, `utils/{format,list-params,paths,errors}.ts`) and Freshies list/detail/add |
+| 2026-11-11 | M2 | `358582c` campaigns list/detail, create (activates the draft), edit, archive, prepare send with `expectedCount` |
+| 2026-11-11 | M3 | `1695d9d` send history list/detail, copy again, note |
+| 2026-11-11 | M4 | `86d3066` imports list/detail/discard and the wizard (`ImportWizard`, 5 tests); imports detail key fix (§8.14) |
+| 2026-11-11 | M5 | Dashboard stats and quick actions; ADR 0007; notes in 05/06/09/README; unused primitives removed (§8.12) |
+| 2026-11-11 | §7 | `pnpm verify` green. **Manual smoke not run by the executing agent**: it could not see the Tauri window. 09 UI items stay unticked until the owner runs §7 |

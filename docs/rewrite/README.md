@@ -9,7 +9,8 @@ This directory is the plan for replacing the Textual TUI with a Tauri 2 + Svelte
 desktop application. It is written to be executed in phases and to make adding new
 features cheap, not just to reproduce the current screens.
 
-**Status:** IPC surface implemented — see [04-exec.md](04-exec.md). Phase 2 (data core)
+**Status:** GUI MVP — see [08-exec.md](08-exec.md) and
+[ADR 0007](../adr/0007-mvp-cut.md); the IPC surface is in [04-exec.md](04-exec.md). Phase 2 (data core)
 is recorded in [03-exec.md](03-exec.md); phase 1 architecture is in
 [02-exec.md](02-exec.md). The TUI is under `legacy/python-tui/`; no application code
 remains at the repository root.

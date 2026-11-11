@@ -1,5 +1,10 @@
 # 05 — Extensibility
 
+> **Superseded on the frontend (2026-11-11):** see
+> [ADR 0007](../adr/0007-mvp-cut.md). Screens are plain routes listed in
+> `desktop/src/lib/shell/nav.ts`; the manifest registry, generator and IPC mock described
+> below were removed. The backend sections still describe the code.
+
 The rewrite is expected to grow beyond the current TUI. Extensibility here means four
 concrete properties:
 

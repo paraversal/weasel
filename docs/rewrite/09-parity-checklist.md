@@ -4,8 +4,9 @@ A living checklist used to decide when the rewrite can replace the TUI. Each ite
 evidence: a passing test, a recorded manual check, or a linked artifact. Do not check an
 item because the code exists.
 
-Status: **IPC surface implemented** — see [04-exec.md](04-exec.md); phases 3–7 UI work
-is not started (read/write/reconciliation UI is phase 3–5). Phase numbers refer to
+Status: **GUI MVP built** — see [08-exec.md](08-exec.md); UI items below are ticked only
+after the 08-exec §7 manual smoke run. Items marked *(post-MVP)* are in the 08-exec §9
+backlog ([ADR 0007](../adr/0007-mvp-cut.md)). Phase numbers refer to
 [06-delivery-plan.md](06-delivery-plan.md).
 
 > **Premise change (2026-11-11):** no legacy data support — see
@@ -18,8 +19,8 @@ is not started (read/write/reconciliation UI is phase 3–5). Phase numbers refe
 - [x] `desktop/` SvelteKit app builds with `adapter-static` and runs in a Tauri window.
       Evidence: static adapter in [`desktop/vite.config.ts`](../../desktop/vite.config.ts), shell
       wired in [`desktop/src-tauri/src/lib.rs`](../../desktop/src-tauri/src/lib.rs); a debug window
-      reached the dashboard against a real SQLite file on 2026-11-11; Playwright shell test
-      [`desktop/tests/e2e/shell.spec.ts`](../../desktop/tests/e2e/shell.spec.ts).
+      reached the dashboard against a real SQLite file on 2026-11-11 (the Playwright shell test
+      was removed by ADR 0007).
 - [x] Rust workspace builds with format/clippy/test clean.
       Evidence: `pnpm verify` locally (fmt, clippy `-D warnings`, `cargo test --workspace`, layer
       check) on 2026-11-11; CI job `rust` added (not yet run remotely).
@@ -28,12 +29,14 @@ is not started (read/write/reconciliation UI is phase 3–5). Phase numbers refe
       generated and committed; [`desktop/src-tauri/tests/ipc_contract.rs`](../../desktop/src-tauri/tests/ipc_contract.rs)
       compares it with every registered descriptor; CI job `contract` runs
       `pnpm bindings && git diff --exit-code`.
-- [x] Feature registry renders navigation from manifests (no hard-coded nav).
+- [x] ~~Feature registry renders navigation from manifests (no hard-coded nav).~~ Removed by
+      ADR 0007; navigation is `desktop/src/lib/shell/nav.ts`. Historical evidence:
       Evidence: [`desktop/src/lib/features/registry.ts`](../../desktop/src/lib/features/registry.ts),
       [`desktop/src/lib/features/registry.test.ts`](../../desktop/src/lib/features/registry.test.ts),
       [`desktop/src/lib/shell/AppShell.svelte`](../../desktop/src/lib/shell/AppShell.svelte) renders
       `registry.current`; the boundary test forbids cross-feature imports.
-- [x] `pnpm gen feature demo --nav` produces a working module without shell edits.
+- [x] ~~`pnpm gen feature demo --nav` produces a working module without shell edits.~~
+      Generator removed by ADR 0007. Historical evidence:
       Evidence: [`tools/gen-feature.test.mjs`](../../tools/gen-feature.test.mjs) and a real run on
       2026-11-11 that added `/demo` to the sidebar and palette; the generated command returned an
       empty list from the Rust backend, then the slice was reverted. No shell or registry edits.
@@ -75,7 +78,7 @@ is not started (read/write/reconciliation UI is phase 3–5). Phase numbers refe
 - [ ] Send history lists batches newest-first and searches recipients/notes.
 - [ ] Batch detail shows snapshotted recipients.
 - [ ] Imports list shows source, status and counts; batch detail lists members.
-- [ ] Global command-palette search finds contacts, campaigns and batches.
+- [ ] Global command-palette search finds contacts, campaigns and batches. *(post-MVP)*
       Evidence (IPC): `commands::search::tests::one_term_matches_every_kind`,
       `commands::search::tests::a_blank_term_returns_nothing`,
       `commands::search::tests::limit_is_clamped_to_twenty`.
@@ -116,7 +119,7 @@ is not started (read/write/reconciliation UI is phase 3–5). Phase numbers refe
       Evidence: [`desktop/src/lib/ipc/events.test.ts`](../../desktop/src/lib/ipc/events.test.ts)
       ("invalidates contact lists but never settings", "passes importProgress to onEvent");
       [`desktop/src/lib/ipc/events.ts`](../../desktop/src/lib/ipc/events.ts) has an exhaustive
-      `satisfies Record<EventType, …>` map; the mock emits the same `WeaselEvent` envelope.
+      `satisfies Record<EventType, …>` map.
 
 ## Reconciliation (phase 5)
 
@@ -135,7 +138,7 @@ is not started (read/write/reconciliation UI is phase 3–5). Phase numbers refe
       `import::apply::unresolved_conflicts_leave_the_draft_untouched`.
 - [ ] Delta imports never remove anyone.
       Evidence (backend): `reconcile_table::rosters_remove_absent_import_contacts_but_deltas_do_not`.
-- [ ] Import undo restores the pre-import state and is audited.
+- [ ] Import undo restores the pre-import state and is audited. *(post-MVP)*
 
 ## Quality and scale (phase 6)
 

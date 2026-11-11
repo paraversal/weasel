@@ -1,5 +1,9 @@
 # 06 — Delivery plan
 
+> **MVP cut (2026-11-11):** phases 3–7 are replaced by [08-exec](08-exec.md), a GUI MVP
+> covering the happy path of phases 3–4. Everything else is the backlog in 08-exec §9.
+> See [ADR 0007](../adr/0007-mvp-cut.md).
+
 Phases are ordered so the extensibility mechanism is proven before most feature code is
 written, and so data safety lands before any write path. Estimates are ideal engineering
 days for one developer and exclude review lag.
