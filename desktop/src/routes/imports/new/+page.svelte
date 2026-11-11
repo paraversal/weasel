@@ -16,6 +16,7 @@
 	import ConflictCard from '$lib/screens/imports/ConflictCard.svelte';
 	import { actionLabel, warningText } from '$lib/screens/imports/labels';
 	import { ImportWizard } from '$lib/screens/imports/wizard.svelte';
+	import { droppedFile, takeDroppedFile } from '$lib/stores/drop.svelte';
 	import { confetti } from '$lib/utils/confetti';
 	import { formatNumber, fullName, plural } from '$lib/utils/format';
 	import { enter } from '$lib/utils/motion';
@@ -23,6 +24,13 @@
 	import { go, href } from '$lib/utils/paths';
 
 	const wizard = new ImportWizard(commands);
+
+	// A file dropped anywhere in the app lands here (see the root layout).
+	$effect(() => {
+		if (!droppedFile.source || wizard.busy) return;
+		const source = takeDroppedFile();
+		if (source) void wizard.useSource(source);
+	});
 	const term = useTerm();
 
 	const steps = [
@@ -99,17 +107,24 @@
 	{#key wizard.step}
 		<div in:enter={{ x: 24, y: 0 }} class="flex flex-col gap-4">
 			{#if wizard.step === 'source'}
-				<Section title="Choose a file">
-					<div class="flex flex-col items-start gap-3">
-						<p class="text-sm text-muted-foreground">
-							An .xlsx, .xls, .ods or .csv file with a header row containing first name, last name
-							and email columns. Nothing changes until you apply the import.
-						</p>
-						<Button onclick={() => wizard.pick()} disabled={!!wizard.busy}>
-							<FileIcon />Choose file…
-						</Button>
-					</div>
-				</Section>
+				<button
+					type="button"
+					class="group flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-border px-6 py-12 text-center transition-colors hover:border-primary/60 hover:bg-muted/40 disabled:opacity-60"
+					onclick={() => wizard.pick()}
+					disabled={!!wizard.busy}
+				>
+					<FileIcon
+						class="size-10 text-muted-foreground transition-transform duration-300 group-hover:-translate-y-1 group-hover:scale-110 group-hover:text-primary"
+					/>
+					<span class="text-base font-semibold">Drop a spreadsheet here</span>
+					<span class="text-sm text-muted-foreground">
+						or <span class="text-foreground underline">choose a file</span> · .xlsx, .xls, .ods or .csv
+						with first name, last name and email columns
+					</span>
+					<span class="text-xs text-muted-foreground">
+						You can also drop a file anywhere in the window. Nothing changes until you apply.
+					</span>
+				</button>
 			{:else if wizard.step === 'columns' && wizard.inspection && wizard.source}
 				{@const inspection = wizard.inspection}
 				<Section title="Columns">

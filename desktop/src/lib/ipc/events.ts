@@ -31,7 +31,9 @@ export const invalidations = {
 	],
 	importsChanged: [keys.imports.all, keys.app.health, keys.activity.all],
 	importProgress: [],
-	importFinished: [keys.imports.all, keys.contacts.all, keys.campaigns.all, keys.app.health]
+	importFinished: [keys.imports.all, keys.contacts.all, keys.campaigns.all, keys.app.health],
+	sourceDropped: [],
+	sourceRejected: []
 } satisfies Record<EventType, readonly QueryKey[]>;
 
 /**

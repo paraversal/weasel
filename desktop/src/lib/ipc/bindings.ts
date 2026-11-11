@@ -554,13 +554,21 @@ export type DomainEvent = DomainEvent_Serialize | DomainEvent_Deserialize;
  *  Wire contract: the enum is exported to TypeScript in full, so a variant can exist
  *  before the feature that emits it lands.
  */
-export type DomainEvent_Deserialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Deserialize } | { type: "contactsChanged" } | { type: "campaignsChanged" } | { type: "sendBatchesChanged" } | { type: "importsChanged" } | { type: "importProgress"; progressId: string; phase: ImportPhaseDto; processed: number; total: number } | { type: "importFinished"; batchId: number; status: ImportStatusDto };
+export type DomainEvent_Deserialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Deserialize } | { type: "contactsChanged" } | { type: "campaignsChanged" } | { type: "sendBatchesChanged" } | { type: "importsChanged" } | { type: "importProgress"; progressId: string; phase: ImportPhaseDto; processed: number; total: number } | { type: "importFinished"; batchId: number; status: ImportStatusDto } | 
+/**  A file dropped on the window was allowlisted and can be inspected. */
+{ type: "sourceDropped"; source: SourceFileDto } | 
+/**  A file dropped on the window cannot be imported (unsupported type, unreadable). */
+{ type: "sourceRejected"; name: string; reason: string };
 
 /**
  *  Wire contract: the enum is exported to TypeScript in full, so a variant can exist
  *  before the feature that emits it lands.
  */
-export type DomainEvent_Serialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Serialize } | { type: "contactsChanged" } | { type: "campaignsChanged" } | { type: "sendBatchesChanged" } | { type: "importsChanged" } | { type: "importProgress"; progressId: string; phase: ImportPhaseDto; processed: number; total: number } | { type: "importFinished"; batchId: number; status: ImportStatusDto };
+export type DomainEvent_Serialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Serialize } | { type: "contactsChanged" } | { type: "campaignsChanged" } | { type: "sendBatchesChanged" } | { type: "importsChanged" } | { type: "importProgress"; progressId: string; phase: ImportPhaseDto; processed: number; total: number } | { type: "importFinished"; batchId: number; status: ImportStatusDto } | 
+/**  A file dropped on the window was allowlisted and can be inspected. */
+{ type: "sourceDropped"; source: SourceFileDto } | 
+/**  A file dropped on the window cannot be imported (unsupported type, unreadable). */
+{ type: "sourceRejected"; name: string; reason: string };
 
 export type EmailChangeReasonDto = "import" | "manual" | "merge" | "correction";
 

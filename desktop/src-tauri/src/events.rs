@@ -11,6 +11,7 @@ use tauri::AppHandle;
 use tauri_specta::Event;
 
 use crate::commands::dto::{ImportPhaseDto, ImportStatusDto};
+use crate::commands::imports::SourceFileDto;
 use crate::error::AppError;
 
 /// Wire contract: the enum is exported to TypeScript in full, so a variant can exist
@@ -41,6 +42,15 @@ pub enum DomainEvent {
         #[serde(rename = "batchId")]
         batch_id: i64,
         status: ImportStatusDto,
+    },
+    /// A file dropped on the window was allowlisted and can be inspected.
+    SourceDropped {
+        source: SourceFileDto,
+    },
+    /// A file dropped on the window cannot be imported (unsupported type, unreadable).
+    SourceRejected {
+        name: String,
+        reason: String,
     },
 }
 

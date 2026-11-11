@@ -9,6 +9,7 @@
 	import { ShortcutMatcher, detectPlatform, type ShortcutBinding } from '$lib/utils/shortcuts';
 
 	import CommandPalette from './CommandPalette.svelte';
+	import DropOverlay from './DropOverlay.svelte';
 	import ErrorBoundary from './ErrorBoundary.svelte';
 	import Sidebar from './Sidebar.svelte';
 	import Toasts from './Toasts.svelte';
@@ -83,3 +84,4 @@
 
 <CommandPalette bind:open={paletteOpen} commands={palette} {platform} onRun={run} />
 <Toasts theme={theme.resolved} />
+<DropOverlay />

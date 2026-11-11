@@ -604,7 +604,16 @@ pub(crate) async fn pick_source(
     let Some(file) = services.dialogs.pick_file(&[filter]).await? else {
         return Ok(None);
     };
-    let canonical = validate_source_path(&file, SUPPORTED_EXTENSIONS)?;
+    register_source(picked, &file).map(Some)
+}
+
+/// Allowlist a file the user chose natively (picker or drop) and describe it. Only the
+/// native layer may call this: the webview must never be able to add paths.
+pub(crate) fn register_source(
+    picked: &PickedSources,
+    file: &Path,
+) -> Result<SourceFileDto, AppError> {
+    let canonical = validate_source_path(file, SUPPORTED_EXTENSIONS)?;
     let name = canonical
         .file_name()
         .and_then(|name| name.to_str())
@@ -618,12 +627,33 @@ pub(crate) async fn pick_source(
         .map_err(|_| CoreError::InvalidState("The file picker lock was poisoned.".to_owned()))?
         .insert(canonical.clone());
 
-    Ok(Some(SourceFileDto {
+    Ok(SourceFileDto {
         path: canonical.display().to_string(),
         name,
         kind: kind.into(),
         bytes,
-    }))
+    })
+}
+
+/// What a native file drop on the window turns into: the first supported file is
+/// allowlisted and announced as `SourceDropped`; otherwise `SourceRejected` says why.
+pub(crate) fn dropped_event(picked: &PickedSources, paths: &[PathBuf]) -> Option<DomainEvent> {
+    let first = paths.first()?;
+    let mut rejection = None;
+    for path in paths {
+        match register_source(picked, path) {
+            Ok(source) => return Some(DomainEvent::SourceDropped { source }),
+            Err(err) => {
+                rejection.get_or_insert(err);
+            }
+        }
+    }
+    let name = first
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let reason = rejection.map(|err| err.message).unwrap_or_default();
+    Some(DomainEvent::SourceRejected { name, reason })
 }
 
 pub(crate) async fn inspect(
@@ -938,6 +968,48 @@ mod tests {
             .await
             .unwrap()
             .unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_dropped_spreadsheet_is_allowlisted_and_announced() {
+        let harness = harness().await;
+        let csv = write_csv(
+            &harness,
+            "dropped.csv",
+            "First Name,Last Name,Email\nAda,Lovelace,ada@example.edu\n",
+        );
+        let notes = write_csv(&harness, "notes.txt", "not a sheet");
+
+        let event = dropped_event(&harness.picked, &[notes.clone(), csv.clone()]).unwrap();
+        let DomainEvent::SourceDropped { source } = event else {
+            panic!("expected SourceDropped, got {event:?}");
+        };
+        assert_eq!(source.name, "dropped.csv");
+        let inspection = inspect(
+            &harness.services,
+            &harness.picked,
+            ImportInspectRequest {
+                path: source.path,
+                sheet: None,
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(inspection.row_count, 1);
+    }
+
+    #[tokio::test]
+    async fn an_unsupported_drop_is_rejected_and_not_allowlisted() {
+        let harness = harness().await;
+        let notes = write_csv(&harness, "notes.txt", "not a sheet");
+        let event = dropped_event(&harness.picked, std::slice::from_ref(&notes)).unwrap();
+        let DomainEvent::SourceRejected { name, reason } = event else {
+            panic!("expected SourceRejected, got {event:?}");
+        };
+        assert_eq!(name, "notes.txt");
+        assert!(!reason.is_empty());
+        assert!(ensure_picked(&harness.picked, &notes).is_err());
+        assert!(dropped_event(&harness.picked, &[]).is_none());
     }
 
     #[tokio::test]

@@ -44,6 +44,19 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(ipc.invoke_handler())
+        .on_window_event(|window, event| {
+            // Native drops are trusted input, like the file picker: allowlist here, then
+            // tell the webview. The webview itself can never add a readable path.
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) = event {
+                let app = window.app_handle();
+                let state = app.state::<AppState>();
+                if let Some(dropped) =
+                    commands::imports::dropped_event(&state.picked_sources, paths)
+                {
+                    state.events.emit(app, dropped);
+                }
+            }
+        })
         .setup(move |app| {
             let paths = resolve_paths(app.handle());
             // Registered here rather than on the builder: the file target must point at

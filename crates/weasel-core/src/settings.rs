@@ -295,7 +295,13 @@ mod tests {
             })
             .await
             .unwrap_err();
-        assert!(matches!(err, CoreError::Validation { field: "audienceTerm", .. }));
+        assert!(matches!(
+            err,
+            CoreError::Validation {
+                field: "audienceTerm",
+                ..
+            }
+        ));
     }
 
     #[tokio::test]

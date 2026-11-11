@@ -133,6 +133,21 @@ describe('ImportWizard', () => {
 		expect(wizard.step).toBe('done');
 	});
 
+	it('starts over with a dropped file and discards the abandoned draft', async () => {
+		const commands = api();
+		const wizard = new ImportWizard(commands);
+		await wizard.pick();
+		await wizard.runPreview();
+		expect(wizard.step).toBe('review');
+
+		await wizard.useSource({ ...source, path: '/tmp/other.csv', name: 'other.csv' });
+		expect(commands.importsDiscard).toHaveBeenCalledWith({ batchId: 7 });
+		expect(wizard.preview).toBeNull();
+		expect(wizard.source?.name).toBe('other.csv');
+		expect(wizard.step).toBe('columns');
+		expect(commands.importsPickSource).toHaveBeenCalledTimes(1);
+	});
+
 	it('keeps the draft and reports the error when apply fails', async () => {
 		const failure = {
 			code: 'VALIDATION' as const,

@@ -68,6 +68,21 @@ export class ImportWizard {
 		});
 	}
 
+	/** Start over with a file that was dropped on the window (already allowlisted). */
+	async useSource(source: SourceFileDto): Promise<void> {
+		await this.run('Reading file…', async () => {
+			if (this.preview) {
+				// The previous draft is abandoned; drop it rather than leave it behind.
+				await call(this.api.importsDiscard({ batchId: this.preview.batch.id })).catch(() => {});
+				this.preview = null;
+			}
+			this.decisions.clear();
+			this.source = source;
+			this.sheet = null;
+			await this.load();
+		});
+	}
+
 	async inspect(sheet: string | null): Promise<void> {
 		await this.run('Reading file…', async () => {
 			this.sheet = sheet;
