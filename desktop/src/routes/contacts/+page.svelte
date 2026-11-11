@@ -14,7 +14,7 @@
 	import * as Table from '$lib/components/ui/table/index.js';
 	import type { ContactSortDto, ContactStatusDto } from '$lib/ipc/bindings';
 	import { contactQueries, importQueries } from '$lib/ipc/queries';
-	import AddFreshieDialog from '$lib/screens/freshies/AddFreshieDialog.svelte';
+	import AddContactDialog from '$lib/screens/contacts/AddContactDialog.svelte';
 	import { formatDate } from '$lib/utils/format';
 	import { flipParams } from '$lib/utils/motion';
 	import {
@@ -167,10 +167,10 @@
 						animate:flip={flipParams()}
 						class="stagger animate-row-in cursor-pointer border-b transition-colors hover:bg-muted/50"
 						style:--i={index}
-						onclick={() => go(`/freshies/${contact.id}`)}
+						onclick={() => go(`/contacts/${contact.id}`)}
 					>
 						<Table.Cell class="font-medium">
-							<a href={href(`/freshies/${contact.id}`)} class="hover:underline">
+							<a href={href(`/contacts/${contact.id}`)} class="hover:underline">
 								{contact.lastName}, {contact.firstName}
 							</a>
 						</Table.Cell>
@@ -208,4 +208,4 @@
 	{/if}
 </div>
 
-<AddFreshieDialog bind:open={addOpen} />
+<AddContactDialog bind:open={addOpen} />

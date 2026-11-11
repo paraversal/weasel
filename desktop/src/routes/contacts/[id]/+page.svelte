@@ -12,7 +12,7 @@
 	import { commands } from '$lib/ipc/bindings';
 	import { call, isIpcError } from '$lib/ipc/client';
 	import { contactQueries } from '$lib/ipc/queries';
-	import ContactFields, { type ContactValues } from '$lib/screens/freshies/ContactFields.svelte';
+	import ContactFields, { type ContactValues } from '$lib/screens/contacts/ContactFields.svelte';
 	import { toast } from '$lib/stores/toasts.svelte';
 	import { reportError } from '$lib/utils/errors';
 	import { formatDate, formatDateTime, fullName } from '$lib/utils/format';
@@ -135,7 +135,7 @@
 </script>
 
 <div class="flex flex-col gap-4">
-	<BackLink to="/freshies" label={term.Many} />
+	<BackLink to="/contacts" label={term.Many} />
 
 	{#if detail.isError}
 		<p class="text-sm text-destructive">

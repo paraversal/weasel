@@ -38,7 +38,7 @@
 			open = false;
 			confetti({ count: 50, spread: 100, power: 9 });
 			toast.success(`Added ${fullName(contact)}`);
-			await go(`/freshies/${contact.id}`);
+			await go(`/contacts/${contact.id}`);
 		} catch (err) {
 			error = err;
 		} finally {

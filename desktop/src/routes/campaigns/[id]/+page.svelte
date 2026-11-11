@@ -194,7 +194,7 @@
 						<Table.Row class="stagger animate-row-in" style="--i: {index}">
 							<Table.Cell class="font-medium">
 								{#if member.contactId}
-									<a href={href(`/freshies/${member.contactId}`)} class="hover:underline">
+									<a href={href(`/contacts/${member.contactId}`)} class="hover:underline">
 										{member.lastName}, {member.firstName}
 									</a>
 								{:else}

@@ -10,7 +10,7 @@ export function resolvePath(path: string): string {
 	return (resolve as unknown as (path: string) => string)(path);
 }
 
-/** `href` for links built at runtime, e.g. `href(`/freshies/${id}`)`. */
+/** `href` for links built at runtime, e.g. `href(`/contacts/${id}`)`. */
 export const href = resolvePath;
 
 type GotoOptions = Parameters<typeof goto>[1];

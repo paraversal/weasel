@@ -103,7 +103,7 @@
 					{#each detail.data.members.items as contact, index (contact.id)}
 						<Table.Row class="stagger animate-row-in" style="--i: {index}">
 							<Table.Cell class="font-medium">
-								<a href={href(`/freshies/${contact.id}`)} class="hover:underline">
+								<a href={href(`/contacts/${contact.id}`)} class="hover:underline">
 									{contact.lastName}, {contact.firstName}
 								</a>
 							</Table.Cell>

@@ -7,14 +7,14 @@ export interface NavItem {
 	label: string;
 	href: string;
 	icon: IconName;
-	/** Two-key sequence such as `"g f"`; Help uses the shell's `?` binding instead. */
+	/** Two-key sequence such as `"g p"`; Help uses the shell's `?` binding instead. */
 	shortcut?: string;
 }
 
 export function navItems(term: Term): NavItem[] {
 	return [
 		{ label: 'Dashboard', href: '/', icon: 'dashboard', shortcut: 'g d' },
-		{ label: term.Many, href: '/freshies', icon: 'users', shortcut: 'g f' },
+		{ label: term.Many, href: '/contacts', icon: 'users', shortcut: 'g p' },
 		{ label: 'Campaigns', href: '/campaigns', icon: 'mail', shortcut: 'g c' },
 		{ label: 'History', href: '/history', icon: 'history', shortcut: 'g h' },
 		{ label: 'Imports', href: '/imports', icon: 'upload', shortcut: 'g i' },
@@ -44,10 +44,10 @@ export function paletteEntries(term: Term): PaletteEntry[] {
 			keywords: ['create']
 		},
 		{
-			id: 'freshies.new',
+			id: 'contacts.new',
 			title: `Add ${term.one}`,
 			group: 'Actions',
-			href: '/freshies?new=1',
+			href: '/contacts?new=1',
 			keywords: ['contact', 'create']
 		},
 		...navItems(term).map((item) => ({

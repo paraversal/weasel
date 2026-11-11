@@ -358,7 +358,7 @@
 						</p>
 						<div class="flex gap-2">
 							<Button href={href(`/imports/${result.id}`)}>View import</Button>
-							<Button variant="outline" href={href('/freshies')}>Go to {term.many}</Button>
+							<Button variant="outline" href={href('/contacts')}>Go to {term.many}</Button>
 						</div>
 					</div>
 				</Section>

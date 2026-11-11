@@ -31,13 +31,13 @@
 		<div class="flex gap-2">
 			<Button href={href('/imports/new')}>Import list</Button>
 			<Button variant="outline" href={href('/campaigns?new=1')}>New campaign</Button>
-			<Button variant="outline" href={href('/freshies?new=1')}>Add {term.one}</Button>
+			<Button variant="outline" href={href('/contacts?new=1')}>Add {term.one}</Button>
 		</div>
 	</div>
 
 	<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 		<a
-			href={href('/freshies')}
+			href={href('/contacts')}
 			class="border-border-subtle stagger animate-rise rounded-lg border bg-surface-raised p-4 transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/50 hover:shadow-md"
 			style="--i: 0"
 		>
