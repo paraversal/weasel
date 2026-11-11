@@ -14,21 +14,36 @@ type DomainEvent = WeaselEvent['event'];
 export const invalidations = {
 	settingsChanged: [keys.settings],
 	operationFailed: [],
-	contactsChanged: [],
-	campaignsChanged: [],
-	sendBatchesChanged: [],
-	importsChanged: [],
+	contactsChanged: [
+		keys.contacts.all,
+		keys.campaigns.all,
+		keys.searchAll,
+		keys.activity.all,
+		keys.app.health
+	],
+	campaignsChanged: [keys.campaigns.all, keys.searchAll, keys.activity.all],
+	sendBatchesChanged: [
+		keys.sendBatches.all,
+		keys.campaigns.all,
+		keys.contacts.detailAll,
+		keys.searchAll,
+		keys.activity.all
+	],
+	importsChanged: [keys.imports.all, keys.app.health, keys.activity.all],
 	importProgress: [],
-	importFinished: []
+	importFinished: [keys.imports.all, keys.contacts.all, keys.campaigns.all, keys.app.health]
 } satisfies Record<EventType, readonly QueryKey[]>;
 
 /**
  * Feeds backend events into the query cache. Revisions are monotonic per process, so a
- * late or duplicated event never undoes a newer one. Returns the disposer.
+ * late or duplicated event never undoes a newer one. `onEvent` receives every accepted
+ * event after invalidation, which is where the import progress store builds its state.
+ * Returns the disposer.
  */
 export function startEventBridge(
 	queryClient: QueryClient,
-	onFailed: (error: AppError, event: DomainEvent) => void
+	onFailed: (error: AppError, event: DomainEvent) => void,
+	onEvent?: (event: DomainEvent) => void
 ): () => void {
 	let lastSeen = 0;
 	let disposed = false;
@@ -42,6 +57,7 @@ export function startEventBridge(
 			const event = payload.event;
 			if (event.type === 'operationFailed') {
 				onFailed(event.error, event);
+				onEvent?.(event);
 				return;
 			}
 			// Unknown variants are ignored on purpose: the backend may be newer.
@@ -49,6 +65,7 @@ export function startEventBridge(
 			for (const queryKey of stale) {
 				void queryClient.invalidateQueries({ queryKey });
 			}
+			onEvent?.(event);
 		})
 		.then((stop) => {
 			if (disposed) stop();

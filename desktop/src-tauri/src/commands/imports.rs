@@ -25,8 +25,7 @@ use weasel_platform::fs::validate_source_path;
 
 use crate::commands::contacts::ContactDto;
 use crate::commands::dto::{
-    ConflictKindDto, Emitted, ImportScopeDto, ImportStatusDto, PageDto,
-    SourceKindDto, finish, page,
+    ConflictKindDto, Emitted, ImportScopeDto, ImportStatusDto, PageDto, SourceKindDto, finish, page,
 };
 use crate::error::AppError;
 use crate::events::{DomainEvent, EventEmitter};
@@ -190,7 +189,11 @@ impl From<weasel_core::import::ContactRef> for ContactRefDto {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
-#[serde(tag = "kind", rename_all = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum PlanActionDto {
     Add,
     UpdateDetails { target: ContactRefDto },
@@ -284,7 +287,11 @@ impl From<RowError> for RowErrorDto {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
-#[serde(tag = "kind", rename_all = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum PlanWarningDto {
     LargeRemoval {
         count: u64,

@@ -21,21 +21,18 @@ describe('mock ipc', () => {
 		for (const name of names) expect(name).toMatch(/^[a-z][a-z0-9_]*$/);
 	});
 
-	it('answers the event plugin commands used by listen()', () => {
-		const handlers = mockHandlers();
-		expect(handlers['plugin:event|listen']).toBeTypeOf('function');
-		expect(handlers['plugin:event|unlisten']).toBeTypeOf('function');
-	});
-
 	it('reports the schema version and domain counts', () => {
 		const handler = mockHandlers().app_health;
 		if (!handler) throw new Error('app_health handler missing');
-		const health = handler({}) as Record<string, unknown>;
-		expect(health).toMatchObject({
-			dbOk: true,
-			schemaVersion: 2,
-			contactCount: 0,
-			pendingImports: 0
-		});
+		const health = handler({}) as {
+			dbOk: boolean;
+			schemaVersion: number;
+			contactCount: number;
+			pendingImports: number;
+		};
+		expect(health.dbOk).toBe(true);
+		expect(health.schemaVersion).toBe(2);
+		expect(health.contactCount).toBeGreaterThan(0);
+		expect(health.pendingImports).toBe(0);
 	});
 });

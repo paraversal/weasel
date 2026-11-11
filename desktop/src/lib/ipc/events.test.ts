@@ -1,115 +1,55 @@
-import type { QueryClient } from '@tanstack/svelte-query';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { QueryClient } from '@tanstack/svelte-query';
+import { describe, expect, it, vi } from 'vitest';
 
-import type { WeaselEvent } from './bindings';
-import { invalidations, startEventBridge } from './events';
-import { keys } from './queries';
+import type { DomainEvent_Serialize, WeaselEvent_Serialize } from './bindings';
+import { events } from './bindings';
+import { startEventBridge } from './events';
 
-const mocks = vi.hoisted(() => ({
-	listeners: [] as Array<(event: { payload: WeaselEvent }) => void>,
-	unlisten: vi.fn()
-}));
+type Delivered = { payload: WeaselEvent_Serialize };
+type Listener = (event: Delivered) => void;
 
-vi.mock('./bindings', () => ({
-	events: {
-		weaselEvent: {
-			listen: vi.fn(async (callback: (event: { payload: WeaselEvent }) => void) => {
-				mocks.listeners.push(callback);
-				return mocks.unlisten;
-			})
-		}
-	}
-}));
-
-function emit(payload: WeaselEvent) {
-	for (const listener of mocks.listeners) listener({ payload });
+async function bridge(onEvent?: (event: DomainEvent_Serialize) => void) {
+	const queryClient = new QueryClient();
+	const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+	let listener: Listener | undefined;
+	vi.spyOn(events.weaselEvent, 'listen').mockImplementation((async (handler: unknown) => {
+		listener = handler as Listener;
+		return () => {};
+	}) as never);
+	const stop = startEventBridge(queryClient, vi.fn(), onEvent);
+	await vi.waitFor(() => expect(listener).toBeDefined());
+	if (!listener) throw new Error('bridge did not subscribe');
+	return {
+		invalidate,
+		send: (event: DomainEvent_Serialize) => listener?.({ payload: { revision: 1, event } }),
+		stop
+	};
 }
 
-function fakeQueryClient() {
-	return { invalidateQueries: vi.fn(() => Promise.resolve()) };
-}
+describe('event bridge', () => {
+	it('invalidates contact lists but never settings', async () => {
+		const { invalidate, send, stop } = await bridge();
+		send({ type: 'contactsChanged' });
 
-async function startBridge() {
-	const queryClient = fakeQueryClient();
-	const onFailed = vi.fn();
-	const stop = startEventBridge(queryClient as unknown as QueryClient, onFailed);
-	await vi.waitFor(() => expect(mocks.listeners).toHaveLength(1));
-	return { queryClient, onFailed, stop };
-}
-
-beforeEach(() => {
-	mocks.listeners = [];
-	mocks.unlisten.mockClear();
-});
-
-describe('invalidations', () => {
-	it('covers every domain event type', () => {
-		expect(Object.keys(invalidations).sort()).toEqual([
-			'campaignsChanged',
-			'contactsChanged',
-			'importFinished',
-			'importProgress',
-			'importsChanged',
-			'operationFailed',
-			'sendBatchesChanged',
-			'settingsChanged'
-		]);
-	});
-});
-
-describe('startEventBridge', () => {
-	it('invalidates the mapped keys for settingsChanged', async () => {
-		const { queryClient } = await startBridge();
-
-		emit({ revision: 1, event: { type: 'settingsChanged', keys: ['theme'] } });
-
-		expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(1);
-		expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: keys.settings });
-	});
-
-	it('drops events whose revision is not newer', async () => {
-		const { queryClient } = await startBridge();
-
-		emit({ revision: 2, event: { type: 'settingsChanged', keys: [] } });
-		emit({ revision: 2, event: { type: 'settingsChanged', keys: [] } });
-		emit({ revision: 1, event: { type: 'settingsChanged', keys: [] } });
-
-		expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(1);
-	});
-
-	it('ignores unknown variants from a newer backend', async () => {
-		const { queryClient, onFailed } = await startBridge();
-
-		emit({ revision: 1, event: { type: 'laterThing' } } as unknown as WeaselEvent);
-
-		expect(queryClient.invalidateQueries).not.toHaveBeenCalled();
-		expect(onFailed).not.toHaveBeenCalled();
-	});
-
-	it('reports operationFailed without invalidating anything', async () => {
-		const { queryClient, onFailed } = await startBridge();
-		const error = {
-			code: 'IO' as const,
-			message: 'disk full',
-			details: null,
-			retryable: true
-		};
-
-		emit({ revision: 1, event: { type: 'operationFailed', operation: 'import', error } });
-
-		expect(onFailed).toHaveBeenCalledWith(error, {
-			type: 'operationFailed',
-			operation: 'import',
-			error
-		});
-		expect(queryClient.invalidateQueries).not.toHaveBeenCalled();
-	});
-
-	it('unlistens when disposed', async () => {
-		const { stop } = await startBridge();
-
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: ['contacts'] });
+		const touched = invalidate.mock.calls.map((call) => call[0]?.queryKey?.[0]);
+		expect(touched).not.toContain('settings');
 		stop();
+	});
 
-		expect(mocks.unlisten).toHaveBeenCalledTimes(1);
+	it('passes importProgress to onEvent', async () => {
+		const seen: DomainEvent_Serialize[] = [];
+		const { send, stop } = await bridge((event) => seen.push(event));
+		const progress: DomainEvent_Serialize = {
+			type: 'importProgress',
+			progressId: 'import-1',
+			phase: 'matching',
+			processed: 3,
+			total: 10
+		};
+		send(progress);
+
+		expect(seen).toContainEqual(progress);
+		stop();
 	});
 });

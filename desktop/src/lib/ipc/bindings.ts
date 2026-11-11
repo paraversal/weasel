@@ -772,9 +772,9 @@ export type PageDto<T> = {
 	limit: number,
 };
 
-export type PlanActionDto = { kind: "add" } | { kind: "updateDetails"; target: ContactRefDto } | { kind: "updateEmail"; target: ContactRefDto } | { kind: "restore"; target: ContactRefDto } | { kind: "noop"; contact_id: number } | { kind: "conflict"; index: number };
+export type PlanActionDto = { kind: "add" } | { kind: "updateDetails"; target: ContactRefDto } | { kind: "updateEmail"; target: ContactRefDto } | { kind: "restore"; target: ContactRefDto } | { kind: "noop"; contactId: number } | { kind: "conflict"; index: number };
 
-export type PlanWarningDto = { kind: "largeRemoval"; count: number; active_import_contacts: number } | { kind: "sameFileAsBatch"; batch_id: number } | { kind: "ignoredTrailingRows"; count: number };
+export type PlanWarningDto = { kind: "largeRemoval"; count: number; activeImportContacts: number } | { kind: "sameFileAsBatch"; batchId: number } | { kind: "ignoredTrailingRows"; count: number };
 
 export type PlannedRowDto = {
 	row: number,
