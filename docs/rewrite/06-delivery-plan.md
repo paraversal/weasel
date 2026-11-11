@@ -6,6 +6,12 @@ days for one developer and exclude review lag.
 
 **Critical path:** 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7.
 
+> **Premise change (2026-11-11):** no legacy data support — see
+> [ADR 0006](../adr/0006-clean-rewrite-no-legacy-data.md). Affects this plan:
+> phase 0 keeps the Python app as a reference only (not runnable-until-parity);
+> phase 2 ships the data core without the legacy import; phase 7 has no legacy
+> migration or removal step.
+
 | Phase | Outcome | Estimate |
 | --- | --- | --- |
 | 0 | Legacy app preserved, decisions recorded | 0.5–1 d |

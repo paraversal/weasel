@@ -170,6 +170,10 @@ pub struct ContactQuery {
 | `settings_get_all` | — | `SettingsDto` |
 | `settings_update` | `{ patch: SettingsPatch }` | `SettingsDto` |
 
+> **Premise change (2026-11-11):** no legacy data support — see
+> [ADR 0006](../adr/0006-clean-rewrite-no-legacy-data.md). `app_import_legacy_db` is
+> dropped; it is not part of the command surface.
+
 ### Contacts (the "Freshies" screens)
 
 | Command | Request | Response |

@@ -277,6 +277,11 @@ Plan actions:
 The plan is serialized into `import_batches.plan_json` so the review screen can be
 resumed, and the applied counts are stored for history.
 
+> **Premise change (2026-11-11):** no legacy data support — see
+> [ADR 0006](../adr/0006-clean-rewrite-no-legacy-data.md). The section below is
+> historical; `legacy_import` is dropped and `source_kind = 'legacy'` is removed when
+> this doc is executed.
+
 ## Legacy data mapping
 
 `weasel-store/src/legacy_import.rs` imports the TUI database once. It runs only into an

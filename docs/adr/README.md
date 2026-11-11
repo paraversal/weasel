@@ -11,5 +11,6 @@ instead of editing history.
 | [0003](0003-contact-model.md) | `Contact` domain with soft removal and immutable send history | Accepted |
 | [0004](0004-feature-modules-and-typed-ipc.md) | Feature modules composed by manifests + typed IPC | Accepted |
 | [0005](0005-static-spa.md) | SvelteKit static SPA, no SSR at runtime | Accepted |
+| [0006](0006-clean-rewrite-no-legacy-data.md) | Clean rewrite; the TUI database is not supported | Accepted |
 
 Template: [0000-template.md](0000-template.md)

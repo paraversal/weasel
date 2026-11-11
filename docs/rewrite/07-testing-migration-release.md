@@ -91,6 +91,10 @@ GitHub Actions, triggered on pull requests and tags.
 
 Branch protection requires jobs 1–3. Platform builds are required before a release tag.
 
+> **Premise change (2026-11-11):** no legacy data support — see
+> [ADR 0006](../adr/0006-clean-rewrite-no-legacy-data.md). The discovery, import and
+> validation flow below is historical and will not be implemented.
+
 ## Legacy database migration
 
 ### Discovery

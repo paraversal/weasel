@@ -7,6 +7,11 @@ item because the code exists.
 Status: **not started** (planning only). Phase numbers refer to
 [06-delivery-plan.md](06-delivery-plan.md).
 
+> **Premise change (2026-11-11):** no legacy data support — see
+> [ADR 0006](../adr/0006-clean-rewrite-no-legacy-data.md). Items about importing or
+> discovering the TUI database are void; parity means equivalent workflows, not
+> migrated data.
+
 ## Foundation (phase 1)
 
 - [ ] `desktop/` SvelteKit app builds with `adapter-static` and runs in a Tauri window.

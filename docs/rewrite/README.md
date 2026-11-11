@@ -1,5 +1,10 @@
 # Weasel rewrite: Tauri 2 + SvelteKit
 
+> **Premise change (2026-11-11):** no legacy data support — see
+> [ADR 0006](../adr/0006-clean-rewrite-no-legacy-data.md). The TUI database is not
+> imported or discovered; the Python app under `legacy/python-tui/` is a behavioural
+> reference only.
+
 This directory is the plan for replacing the Textual TUI with a Tauri 2 + SvelteKit
 desktop application. It is written to be executed in phases and to make adding new
 features cheap, not just to reproduce the current screens.
@@ -53,7 +58,7 @@ but changing one should be recorded in `docs/adr/`.
 
 1. Rust replaces Python for the application backend; no Python sidecar. `calamine`
    covers `.xlsx`/`.xls`/`.ods` and `csv` covers CSV. The old Python app is kept under
-   `legacy/` until parity is signed off.
+   `legacy/` as a reference.
 2. SQLite remains the store. No server component and no network dependency for core
    features.
 3. The domain entity is `Contact`. The UI keeps the project's "Freshies" vocabulary for
