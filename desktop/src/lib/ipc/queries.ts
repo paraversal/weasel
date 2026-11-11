@@ -52,7 +52,7 @@ export const keys = {
 	imports: {
 		all: ['imports'] as const,
 		list: (q: ImportListRequest_Deserialize) => ['imports', 'list', q] as const,
-		detail: (id: number) => ['imports', 'detail', id] as const,
+		detail: (q: ImportGetRequest_Deserialize) => ['imports', 'detail', q.batchId, q] as const,
 		planRows: (id: number, q: ImportPlanRowsRequest_Deserialize) =>
 			['imports', 'planRows', id, q] as const
 	},
@@ -144,7 +144,7 @@ export const importQueries = {
 		queryFn: () => call(commands.importsList(request))
 	}),
 	detail: (request: ImportGetRequest_Deserialize) => ({
-		queryKey: keys.imports.detail(request.batchId),
+		queryKey: keys.imports.detail(request),
 		queryFn: () => call(commands.importsGet(request))
 	}),
 	planRows: (request: ImportPlanRowsRequest_Deserialize) => ({
