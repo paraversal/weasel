@@ -1,0 +1,20 @@
+{
+  "name": "weasel-workspace",
+  "private": true,
+  "packageManager": "pnpm@12.14.0",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "dev": "pnpm -C desktop tauri dev",
+    "dev:web": "pnpm -C desktop dev:mock",
+    "tauri": "pnpm -C desktop tauri",
+    "build": "pnpm -C desktop build",
+    "check": "pnpm -C desktop check",
+    "lint": "pnpm -C desktop lint",
+    "test": "pnpm -C desktop test && node --test tools/",
+    "test:e2e": "pnpm -C desktop test:e2e",
+    "bindings": "cargo run -q -p weasel-desktop --bin export-bindings",
+    "gen": "node tools/gen-feature.mjs",
+    "check:layers": "bash tools/check-layers.sh",
+    "verify": "pnpm check && pnpm lint && pnpm test && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && pnpm check:layers"
+  }
+}

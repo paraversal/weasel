@@ -1,0 +1,16 @@
+packages:
+  - "desktop"
+
+# Pins from docs/rewrite/02-exec.md §4 (and the shadcn-svelte preset they pull in) are
+# younger than the default maturity window. Everything else keeps the guard.
+minimumReleaseAgeExclude:
+  - "@fontsource-variable/geist"
+  - "@lucide/svelte"
+  - "@playwright/test"
+  - "@sveltejs/kit"
+  - "cn"
+  - "playwright"
+  - "playwright-core"
+  - "shadcn-svelte"
+  - "tailwind-variants"
+  - "tw-animate-css"
