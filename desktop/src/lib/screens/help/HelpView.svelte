@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { PALETTE } from '$lib/shell/nav';
+	import { paletteEntries } from '$lib/shell/nav';
+	import { useTerm } from '$lib/stores/term.svelte';
 	import { detectPlatform, formatShortcut } from '$lib/utils/shortcuts';
 
 	const platform = detectPlatform();
+	const term = useTerm();
 
 	/** Shell bindings are not palette commands, so they are listed explicitly. */
 	const builtIns: Array<{ label: string; shortcut: string }> = [
@@ -14,10 +16,12 @@
 
 	const rows = $derived([
 		...builtIns,
-		...PALETTE.filter((command) => command.shortcut).map((command) => ({
-			label: command.title,
-			shortcut: command.shortcut ?? ''
-		}))
+		...paletteEntries(term)
+			.filter((command) => command.shortcut)
+			.map((command) => ({
+				label: command.title,
+				shortcut: command.shortcut ?? ''
+			}))
 	]);
 </script>
 

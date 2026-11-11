@@ -26,6 +26,7 @@
 		param
 	} from '$lib/utils/list-params';
 	import { go, href } from '$lib/utils/paths';
+	import { useTerm } from '$lib/stores/term.svelte';
 
 	const tabs = [
 		{ value: 'active', label: 'Active' },
@@ -36,6 +37,7 @@
 	type Tab = (typeof tabs)[number]['value'];
 
 	const search = $derived(param(page.url, 'search'));
+	const term = useTerm();
 	const tab = $derived<Tab>(
 		tabs.find((t) => t.value === param(page.url, 'status'))?.value ?? 'active'
 	);
@@ -89,8 +91,8 @@
 
 <div class="flex flex-col gap-4">
 	<div class="flex items-center justify-between gap-3">
-		<h1 class="text-xl font-semibold">Freshies</h1>
-		<Button onclick={() => (addOpen = true)}><PlusIcon />Add freshie</Button>
+		<h1 class="text-xl font-semibold">{term.Many}</h1>
+		<Button onclick={() => (addOpen = true)}><PlusIcon />Add {term.one}</Button>
 	</div>
 
 	<div class="flex flex-wrap items-center gap-3">
@@ -120,13 +122,13 @@
 	</div>
 
 	{#if list.isError}
-		<p class="text-sm text-destructive">Could not load freshies: {list.error.message}</p>
+		<p class="text-sm text-destructive">Could not load {term.many}: {list.error.message}</p>
 	{:else if list.data && list.data.total === 0 && !search && !importBatchId && tab === 'active'}
-		<EmptyState title="No freshies yet">
+		<EmptyState title="No {term.many} yet">
 			<p>Import a spreadsheet or add someone by hand.</p>
 			<div class="flex gap-2">
 				<Button href={href('/imports/new')}>Import list</Button>
-				<Button variant="outline" onclick={() => (addOpen = true)}>Add freshie</Button>
+				<Button variant="outline" onclick={() => (addOpen = true)}>Add {term.one}</Button>
 			</div>
 		</EmptyState>
 	{:else}
@@ -194,7 +196,7 @@
 				{:else}
 					<Table.Row>
 						<Table.Cell colspan={5} class="py-8 text-center text-muted-foreground">
-							{list.isPending ? 'Loading…' : 'No freshies match.'}
+							{list.isPending ? 'Loading…' : `No ${term.many} match.`}
 						</Table.Cell>
 					</Table.Row>
 				{/each}

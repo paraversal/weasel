@@ -11,10 +11,12 @@
 	} from '$lib/ipc/queries';
 	import { formatDateTime, formatNumber } from '$lib/utils/format';
 	import { href } from '$lib/utils/paths';
+	import { useTerm } from '$lib/stores/term.svelte';
 
 	import AppStatusWidget from './AppStatusWidget.svelte';
 
 	const contacts = createQuery(() => contactQueries.stats());
+	const term = useTerm();
 	const campaigns = createQuery(() => campaignQueries.list({ limit: 1 }));
 	const lastImport = createQuery(() => importQueries.list({ status: 'applied', limit: 1 }));
 	const lastSend = createQuery(() => sendBatchQueries.list({ limit: 1 }));
@@ -29,7 +31,7 @@
 		<div class="flex gap-2">
 			<Button href={href('/imports/new')}>Import list</Button>
 			<Button variant="outline" href={href('/campaigns?new=1')}>New campaign</Button>
-			<Button variant="outline" href={href('/freshies?new=1')}>Add freshie</Button>
+			<Button variant="outline" href={href('/freshies?new=1')}>Add {term.one}</Button>
 		</div>
 	</div>
 
@@ -39,7 +41,7 @@
 			class="border-border-subtle stagger animate-rise rounded-lg border bg-surface-raised p-4 transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted/50 hover:shadow-md"
 			style="--i: 0"
 		>
-			<p class="text-xs text-muted-foreground">Active freshies</p>
+			<p class="text-xs text-muted-foreground">Active {term.many}</p>
 			<p class="text-2xl font-semibold tabular-nums">
 				{#if contacts.data}<CountUp value={contacts.data.active} />{:else}…{/if}
 			</p>

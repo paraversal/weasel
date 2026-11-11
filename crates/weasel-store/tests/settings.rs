@@ -24,6 +24,7 @@ async fn settings_round_trip_through_sqlite() {
         .update(SettingsPatch {
             theme: Some(Theme::Dark),
             feature_flags: Some(BTreeMap::from([("beta".to_owned(), true)])),
+            audience_term: None,
         })
         .await
         .unwrap();

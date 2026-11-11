@@ -19,9 +19,11 @@
 	import { confetti } from '$lib/utils/confetti';
 	import { formatNumber, fullName, plural } from '$lib/utils/format';
 	import { enter } from '$lib/utils/motion';
+	import { useTerm } from '$lib/stores/term.svelte';
 	import { go, href } from '$lib/utils/paths';
 
 	const wizard = new ImportWizard(commands);
+	const term = useTerm();
 
 	const steps = [
 		{ id: 'source', label: 'File' },
@@ -198,8 +200,8 @@
 								<span>
 									<span class="font-medium">The complete list</span>
 									<span class="block text-muted-foreground">
-										Imported freshies missing from this file are marked removed (you will see who
-										before applying). People added by hand are never removed.
+										Imported {term.many} missing from this file are marked removed (you will see who before
+										applying). People added by hand are never removed.
 									</span>
 								</span>
 							</label>
@@ -238,7 +240,7 @@
 						]}
 						role="alert"
 					>
-						{warningText(warning)}
+						{warningText(warning, term)}
 					</p>
 				{/each}
 
@@ -336,12 +338,12 @@
 							aria-hidden="true">✓</span
 						>
 						<p>
-							{plural(result.summary.added, 'freshie')} added, {result.summary.updated} updated,
+							{plural(result.summary.added, term.one, term.many)} added, {result.summary.updated} updated,
 							{result.summary.removed} marked removed, {result.summary.unchanged} unchanged.
 						</p>
 						<div class="flex gap-2">
 							<Button href={href(`/imports/${result.id}`)}>View import</Button>
-							<Button variant="outline" href={href('/freshies')}>Go to freshies</Button>
+							<Button variant="outline" href={href('/freshies')}>Go to {term.many}</Button>
 						</div>
 					</div>
 				</Section>
@@ -353,7 +355,7 @@
 <ConfirmDialog
 	bind:open={discardOpen}
 	title="Discard this import?"
-	description="Nothing has been applied yet, so no freshie changes."
+	description="Nothing has been applied yet, so no {term.one} changes."
 	confirmLabel="Discard"
 	destructive
 	onConfirm={discard}

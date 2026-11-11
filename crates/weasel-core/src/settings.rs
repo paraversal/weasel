@@ -19,6 +19,10 @@ use crate::{
 pub const KEY_THEME: &str = "theme";
 /// Storage key for the feature-flag map.
 pub const KEY_FEATURE_FLAGS: &str = "featureFlags";
+/// Storage key for what the UI calls the people in the address book.
+pub const KEY_AUDIENCE_TERM: &str = "audienceTerm";
+/// Longest accepted audience term, per form.
+pub const AUDIENCE_TERM_MAX: usize = 40;
 
 /// Colour scheme selection. `System` follows the OS preference.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -30,11 +34,52 @@ pub enum Theme {
     Dark,
 }
 
+/// The word the UI uses for one person and for many ("freshie" / "freshies").
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudienceTerm {
+    pub singular: String,
+    pub plural: String,
+}
+
+impl Default for AudienceTerm {
+    fn default() -> Self {
+        Self {
+            singular: "freshie".to_owned(),
+            plural: "freshies".to_owned(),
+        }
+    }
+}
+
+impl AudienceTerm {
+    /// Trimmed copy, or a `Validation` error for an empty or overlong form.
+    pub fn cleaned(&self) -> CoreResult<Self> {
+        let clean = |raw: &str| -> CoreResult<String> {
+            let value = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+            if value.is_empty() {
+                return Err(CoreError::validation("audienceTerm", "must not be empty"));
+            }
+            if value.chars().count() > AUDIENCE_TERM_MAX {
+                return Err(CoreError::validation(
+                    "audienceTerm",
+                    format!("must be at most {AUDIENCE_TERM_MAX} characters"),
+                ));
+            }
+            Ok(value)
+        };
+        Ok(Self {
+            singular: clean(&self.singular)?,
+            plural: clean(&self.plural)?,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub theme: Theme,
     pub feature_flags: BTreeMap<String, bool>,
+    pub audience_term: AudienceTerm,
 }
 
 /// A partial update. Absent fields keep their stored value.
@@ -43,6 +88,7 @@ pub struct Settings {
 pub struct SettingsPatch {
     pub theme: Option<Theme>,
     pub feature_flags: Option<BTreeMap<String, bool>>,
+    pub audience_term: Option<AudienceTerm>,
 }
 
 impl SettingsPatch {
@@ -98,6 +144,14 @@ impl SettingsService {
             changed.push(KEY_THEME);
         }
 
+        if let Some(term) = patch.audience_term {
+            let term = term.cleaned()?;
+            if next.audience_term != term {
+                next.audience_term = term;
+                changed.push(KEY_AUDIENCE_TERM);
+            }
+        }
+
         if let Some(flags) = patch.feature_flags {
             let mut merged = next.feature_flags.clone();
             merge_flags(&mut merged, flags);
@@ -116,6 +170,7 @@ impl SettingsService {
             let value = match *key {
                 KEY_THEME => to_value(&next.theme)?,
                 KEY_FEATURE_FLAGS => to_value(&next.feature_flags)?,
+                KEY_AUDIENCE_TERM => to_value(&next.audience_term)?,
                 other => {
                     return Err(CoreError::internal(std::io::Error::other(format!(
                         "unhandled settings key {other}"
@@ -150,6 +205,13 @@ fn decode(entries: Vec<(String, Value)>) -> Settings {
             KEY_FEATURE_FLAGS => match serde_json::from_value(value) {
                 Ok(flags) => settings.feature_flags = flags,
                 Err(err) => tracing::warn!(%err, "ignoring malformed setting `featureFlags`"),
+            },
+            KEY_AUDIENCE_TERM => match serde_json::from_value::<AudienceTerm>(value)
+                .map_err(|err| err.to_string())
+                .and_then(|term| term.cleaned().map_err(|err| err.to_string()))
+            {
+                Ok(term) => settings.audience_term = term,
+                Err(err) => tracing::warn!(%err, "ignoring malformed setting `audienceTerm`"),
             },
             other => tracing::debug!(key = other, "ignoring unknown setting"),
         }
@@ -203,6 +265,40 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn audience_term_is_trimmed_validated_and_persisted() {
+        let repo = Arc::new(FakeRepo::default());
+        let svc = service(repo.clone());
+        assert_eq!(svc.get().await.unwrap().audience_term.plural, "freshies");
+
+        let (next, changed) = svc
+            .update(SettingsPatch {
+                audience_term: Some(AudienceTerm {
+                    singular: "  member ".to_owned(),
+                    plural: "club   members".to_owned(),
+                }),
+                ..SettingsPatch::default()
+            })
+            .await
+            .unwrap();
+        assert_eq!(changed, vec![KEY_AUDIENCE_TERM]);
+        assert_eq!(next.audience_term.singular, "member");
+        assert_eq!(next.audience_term.plural, "club members");
+        assert_eq!(svc.get().await.unwrap().audience_term, next.audience_term);
+
+        let err = svc
+            .update(SettingsPatch {
+                audience_term: Some(AudienceTerm {
+                    singular: " ".to_owned(),
+                    plural: "x".to_owned(),
+                }),
+                ..SettingsPatch::default()
+            })
+            .await
+            .unwrap_err();
+        assert!(matches!(err, CoreError::Validation { field: "audienceTerm", .. }));
+    }
+
+    #[tokio::test]
     async fn defaults_on_empty_storage() {
         let repo = Arc::new(FakeRepo::default());
         let settings = service(repo).get().await.unwrap();
@@ -235,6 +331,7 @@ mod tests {
             .update(SettingsPatch {
                 theme: Some(Theme::Dark),
                 feature_flags: Some(BTreeMap::from([("alpha".to_owned(), true)])),
+                audience_term: None,
             })
             .await
             .unwrap();
@@ -243,6 +340,7 @@ mod tests {
             .update(SettingsPatch {
                 theme: None,
                 feature_flags: Some(BTreeMap::from([("beta".to_owned(), true)])),
+                audience_term: None,
             })
             .await
             .unwrap();
@@ -261,6 +359,7 @@ mod tests {
             .update(SettingsPatch {
                 theme: Some(Theme::System),
                 feature_flags: None,
+                audience_term: None,
             })
             .await
             .unwrap();
@@ -276,6 +375,7 @@ mod tests {
             .update(SettingsPatch {
                 theme: None,
                 feature_flags: Some(BTreeMap::from([("Not Valid".to_owned(), true)])),
+                audience_term: None,
             })
             .await
             .unwrap_err();

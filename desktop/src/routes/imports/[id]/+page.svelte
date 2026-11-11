@@ -14,11 +14,13 @@
 	import { importQueries } from '$lib/ipc/queries';
 	import { toast } from '$lib/stores/toasts.svelte';
 	import { reportError } from '$lib/utils/errors';
+	import { useTerm } from '$lib/stores/term.svelte';
 	import { formatDate, formatDateTime } from '$lib/utils/format';
 	import { PAGE_SIZE, offsetFor, pageParam } from '$lib/utils/list-params';
 	import { href } from '$lib/utils/paths';
 
 	const id = $derived(Number(page.params.id));
+	const term = useTerm();
 	const offset = $derived(offsetFor(pageParam(page.url)));
 	const detail = createQuery(() => ({
 		...importQueries.detail({ batchId: id, limit: PAGE_SIZE, offset }),
@@ -87,7 +89,7 @@
 		</dl>
 
 		{#if batch.status === 'applied'}
-			<h2 class="text-sm font-semibold">Freshies added by this import</h2>
+			<h2 class="text-sm font-semibold">{term.Many} added by this import</h2>
 			<Table.Root>
 				<Table.Header>
 					<Table.Row>
@@ -114,7 +116,7 @@
 					{:else}
 						<Table.Row>
 							<Table.Cell colspan={4} class="py-8 text-center text-muted-foreground">
-								No new freshies came from this import.
+								No new {term.many} came from this import.
 							</Table.Cell>
 						</Table.Row>
 					{/each}
@@ -130,7 +132,7 @@
 <ConfirmDialog
 	bind:open={discardOpen}
 	title="Discard this draft?"
-	description="Nothing from it was applied, so no freshie changes."
+	description="Nothing from it was applied, so no {term.one} changes."
 	confirmLabel="Discard"
 	destructive
 	onConfirm={discard}

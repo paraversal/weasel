@@ -1,18 +1,26 @@
 import type { ConflictKindDto, PlanActionDto, PlanWarningDto } from '$lib/ipc/bindings';
+import type { Term } from '$lib/stores/term.svelte';
 import { plural } from '$lib/utils/format';
 
-export const conflictLabels: Record<ConflictKindDto, string> = {
-	duplicateEmailInSource: 'The same email appears in several rows of the file.',
-	ambiguousHistory: 'This email used to belong to more than one freshie.',
-	ambiguousIdentity: 'More than one freshie has this name.',
-	manualContact: 'This row matches a freshie who was added by hand.',
-	contactMatchedTwice: 'Several rows match the same freshie.'
-};
+export function conflictLabel(kind: ConflictKindDto, term: Term): string {
+	switch (kind) {
+		case 'duplicateEmailInSource':
+			return 'The same email appears in several rows of the file.';
+		case 'ambiguousHistory':
+			return `This email used to belong to more than one ${term.one}.`;
+		case 'ambiguousIdentity':
+			return `More than one ${term.one} has this name.`;
+		case 'manualContact':
+			return `This row matches a ${term.one} who was added by hand.`;
+		case 'contactMatchedTwice':
+			return `Several rows match the same ${term.one}.`;
+	}
+}
 
-export function warningText(warning: PlanWarningDto): string {
+export function warningText(warning: PlanWarningDto, term: Term): string {
 	switch (warning.kind) {
 		case 'largeRemoval':
-			return `This would mark ${plural(warning.count, 'freshie')} removed (of ${warning.activeImportContacts} imported and active). Only continue if this file is the complete list.`;
+			return `This would mark ${plural(warning.count, term.one, term.many)} removed (of ${warning.activeImportContacts} imported and active). Only continue if this file is the complete list.`;
 		case 'sameFileAsBatch':
 			return `This exact file was already imported (import #${warning.batchId}).`;
 		case 'ignoredTrailingRows':

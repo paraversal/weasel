@@ -17,8 +17,10 @@
 	import { reportError } from '$lib/utils/errors';
 	import { formatDate, formatDateTime, fullName } from '$lib/utils/format';
 	import { href } from '$lib/utils/paths';
+	import { useTerm } from '$lib/stores/term.svelte';
 
 	const id = $derived(Number(page.params.id));
+	const term = useTerm();
 	const detail = createQuery(() => contactQueries.detail(id));
 	const contact = $derived(detail.data?.contact);
 
@@ -91,7 +93,7 @@
 					status: 'archived',
 					label: 'Archive',
 					title: `Archive ${name}?`,
-					description: 'Archived freshies are hidden from lists and campaigns. History is kept.',
+					description: `Archived ${term.many} are hidden from lists and campaigns. History is kept.`,
 					destructive: false
 				}
 			];
@@ -133,13 +135,13 @@
 </script>
 
 <div class="flex flex-col gap-4">
-	<BackLink to="/freshies" label="Freshies" />
+	<BackLink to="/freshies" label={term.Many} />
 
 	{#if detail.isError}
 		<p class="text-sm text-destructive">
 			{isIpcError(detail.error) && detail.error.code === 'NOT_FOUND'
-				? 'This freshie no longer exists.'
-				: `Could not load this freshie: ${detail.error.message}`}
+				? `This ${term.one} no longer exists.`
+				: `Could not load this ${term.one}: ${detail.error.message}`}
 		</p>
 	{:else if contact && detail.data}
 		<div class="flex flex-wrap items-center justify-between gap-3">

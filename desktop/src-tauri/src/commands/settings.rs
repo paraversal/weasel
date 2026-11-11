@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 use weasel_core::FeatureDescriptor;
-use weasel_core::settings::{Settings, SettingsPatch, SettingsService, Theme};
+use weasel_core::settings::{AudienceTerm, Settings, SettingsPatch, SettingsService, Theme};
 
 use crate::error::AppError;
 use crate::events::DomainEvent;
@@ -46,6 +46,33 @@ impl From<ThemeDto> for Theme {
 pub struct SettingsDto {
     pub theme: ThemeDto,
     pub feature_flags: BTreeMap<String, bool>,
+    pub audience_term: AudienceTermDto,
+}
+
+/// What the UI calls one person and many people (default "freshie" / "freshies").
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AudienceTermDto {
+    pub singular: String,
+    pub plural: String,
+}
+
+impl From<AudienceTerm> for AudienceTermDto {
+    fn from(term: AudienceTerm) -> Self {
+        Self {
+            singular: term.singular,
+            plural: term.plural,
+        }
+    }
+}
+
+impl From<AudienceTermDto> for AudienceTerm {
+    fn from(term: AudienceTermDto) -> Self {
+        Self {
+            singular: term.singular,
+            plural: term.plural,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -53,6 +80,7 @@ pub struct SettingsDto {
 pub struct SettingsPatchDto {
     pub theme: Option<ThemeDto>,
     pub feature_flags: Option<BTreeMap<String, bool>>,
+    pub audience_term: Option<AudienceTermDto>,
 }
 
 #[derive(Debug, Clone, Deserialize, specta::Type)]
@@ -66,6 +94,7 @@ impl From<Settings> for SettingsDto {
         Self {
             theme: settings.theme.into(),
             feature_flags: settings.feature_flags,
+            audience_term: settings.audience_term.into(),
         }
     }
 }
@@ -75,6 +104,7 @@ impl From<SettingsPatchDto> for SettingsPatch {
         Self {
             theme: patch.theme.map(Into::into),
             feature_flags: patch.feature_flags,
+            audience_term: patch.audience_term.map(Into::into),
         }
     }
 }
@@ -156,6 +186,7 @@ mod tests {
             patch: SettingsPatchDto {
                 theme,
                 feature_flags: None,
+                audience_term: None,
             },
         }
     }
@@ -193,6 +224,7 @@ mod tests {
             patch: SettingsPatchDto {
                 theme: None,
                 feature_flags: Some(BTreeMap::from([("Bad Id".to_string(), true)])),
+                audience_term: None,
             },
         };
         let error = apply(&settings, request).await.unwrap_err();

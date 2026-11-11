@@ -13,7 +13,8 @@
 	import Sidebar from './Sidebar.svelte';
 	import Toasts from './Toasts.svelte';
 	import Topbar from './Topbar.svelte';
-	import { NAV, PALETTE, type PaletteEntry } from './nav';
+	import { navItems, paletteEntries, type PaletteEntry } from './nav';
+	import { useTerm } from '$lib/stores/term.svelte';
 	import type { ThemeController } from '$lib/stores/theme.svelte';
 
 	let {
@@ -25,6 +26,9 @@
 	} = $props();
 
 	const platform = detectPlatform();
+	const term = useTerm();
+	const nav = $derived(navItems(term));
+	const palette = $derived(paletteEntries(term));
 	let paletteOpen = $state(false);
 
 	function run(entry: PaletteEntry) {
@@ -39,10 +43,12 @@
 				if (!paletteOpen) void goto(resolvePath('/help'));
 			}
 		},
-		...PALETTE.filter((entry) => entry.shortcut).map((entry) => ({
-			spec: entry.shortcut ?? '',
-			run: () => run(entry)
-		}))
+		...palette
+			.filter((entry) => entry.shortcut)
+			.map((entry) => ({
+				spec: entry.shortcut ?? '',
+				run: () => run(entry)
+			}))
 	]);
 
 	// One global listener; re-created if the bindings change.
@@ -57,7 +63,7 @@
 </script>
 
 <div class="grid h-dvh grid-cols-[auto_minmax(0,1fr)] overflow-hidden bg-background">
-	<Sidebar items={NAV} />
+	<Sidebar items={nav} />
 	<div class="flex min-h-0 min-w-0 flex-col">
 		<Topbar onOpenPalette={() => (paletteOpen = true)} {theme} {platform} />
 		<main class="min-h-0 flex-1 overflow-auto">
@@ -75,5 +81,5 @@
 	</div>
 </div>
 
-<CommandPalette bind:open={paletteOpen} commands={PALETTE} {platform} onRun={run} />
+<CommandPalette bind:open={paletteOpen} commands={palette} {platform} onRun={run} />
 <Toasts theme={theme.resolved} />

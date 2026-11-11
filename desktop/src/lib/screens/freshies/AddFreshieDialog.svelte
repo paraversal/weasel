@@ -8,10 +8,12 @@
 	import { fullName } from '$lib/utils/format';
 	import { confetti } from '$lib/utils/confetti';
 	import { go } from '$lib/utils/paths';
+	import { useTerm } from '$lib/stores/term.svelte';
 
 	import ContactFields, { type ContactValues } from './ContactFields.svelte';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
+	const term = useTerm();
 
 	const empty = (): ContactValues => ({ firstName: '', lastName: '', email: '', notes: '' });
 	let values = $state(empty());
@@ -49,7 +51,7 @@
 	<Dialog.Content class="max-w-lg">
 		<form onsubmit={submit} class="flex flex-col gap-4">
 			<Dialog.Header>
-				<Dialog.Title>Add freshie</Dialog.Title>
+				<Dialog.Title>Add {term.one}</Dialog.Title>
 				<Dialog.Description>
 					Added by hand, so later roster imports never mark them removed.
 				</Dialog.Description>
@@ -58,7 +60,7 @@
 			<FormError {error} />
 			<Dialog.Footer>
 				<Button variant="outline" type="button" onclick={() => (open = false)}>Cancel</Button>
-				<Button type="submit" disabled={pending}>Add freshie</Button>
+				<Button type="submit" disabled={pending}>Add {term.one}</Button>
 			</Dialog.Footer>
 		</form>
 	</Dialog.Content>

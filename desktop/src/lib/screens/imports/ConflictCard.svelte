@@ -2,7 +2,9 @@
 	import type { ConflictDto, PlannedRowDto } from '$lib/ipc/bindings';
 	import { fullName } from '$lib/utils/format';
 
-	import { conflictLabels } from './labels';
+	import { useTerm } from '$lib/stores/term.svelte';
+
+	import { conflictLabel } from './labels';
 	import type { Decision, ImportWizard } from './wizard.svelte';
 
 	let {
@@ -23,6 +25,7 @@
 		return null;
 	}
 
+	const term = useTerm();
 	const byRow = $derived(new Map(rows.map((row) => [row.row, row])));
 </script>
 
@@ -32,7 +35,7 @@
 		conflict.rows.every((row) => wizard.decisions.has(row)) ? 'border-success/50 bg-success/5' : ''
 	]}
 >
-	<p class="text-sm font-medium">{conflictLabels[conflict.kind]}</p>
+	<p class="text-sm font-medium">{conflictLabel(conflict.kind, term)}</p>
 	{#each conflict.rows as row (row)}
 		{@const source = byRow.get(row)}
 		<div class="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -57,7 +60,7 @@
 						Same person as {fullName(candidate)} &lt;{candidate.email}&gt;
 					</option>
 				{/each}
-				<option value="createNew">Add as a new freshie</option>
+				<option value="createNew">Add as a new {term.one}</option>
 				<option value="skip">Skip this row</option>
 			</select>
 		</div>

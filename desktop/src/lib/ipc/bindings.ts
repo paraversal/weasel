@@ -171,6 +171,12 @@ export type AudienceMemberDto_Serialize = {
 	sentAt: number | null,
 };
 
+/**  What the UI calls one person and many people (default "freshie" / "freshies"). */
+export type AudienceTermDto = {
+	singular: string,
+	plural: string,
+};
+
 export type AuditEventDto = AuditEventDto_Serialize | AuditEventDto_Deserialize;
 
 export type AuditEventDto_Deserialize = {
@@ -920,6 +926,7 @@ export type SendRecordStatusDto = "created" | "copied" | "sent" | "failed" | "sk
 export type SettingsDto = {
 	theme: ThemeDto,
 	featureFlags: { [key in string]: boolean },
+	audienceTerm: AudienceTermDto,
 };
 
 export type SettingsPatchDto = SettingsPatchDto_Serialize | SettingsPatchDto_Deserialize;
@@ -927,11 +934,13 @@ export type SettingsPatchDto = SettingsPatchDto_Serialize | SettingsPatchDto_Des
 export type SettingsPatchDto_Deserialize = {
 	theme?: ThemeDto | null,
 	featureFlags?: { [key in string]: boolean } | null,
+	audienceTerm?: AudienceTermDto | null,
 };
 
 export type SettingsPatchDto_Serialize = {
 	theme: ThemeDto | null,
 	featureFlags: { [key in string]: boolean } | null,
+	audienceTerm: AudienceTermDto | null,
 };
 
 export type SettingsUpdateRequest = SettingsUpdateRequest_Serialize | SettingsUpdateRequest_Deserialize;

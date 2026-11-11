@@ -79,7 +79,7 @@ export class ImportWizard {
 		const { firstName, lastName, email } = this.mapping;
 		if (!this.source || firstName === null || lastName === null || email === null) return;
 		const path = this.source.path;
-		await this.run('Comparing with your freshies…', async () => {
+		await this.run('Comparing with your list…', async () => {
 			this.preview = await call(
 				this.api.importsPreview({
 					path,

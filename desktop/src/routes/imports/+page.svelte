@@ -15,11 +15,13 @@
 	import { importQueries } from '$lib/ipc/queries';
 	import { toast } from '$lib/stores/toasts.svelte';
 	import { reportError } from '$lib/utils/errors';
+	import { useTerm } from '$lib/stores/term.svelte';
 	import { formatDateTime } from '$lib/utils/format';
 	import { PAGE_SIZE, offsetFor, pageParam } from '$lib/utils/list-params';
 	import { go, href } from '$lib/utils/paths';
 
 	const offset = $derived(offsetFor(pageParam(page.url)));
+	const term = useTerm();
 	const list = createQuery(() => ({
 		...importQueries.list({ limit: PAGE_SIZE, offset }),
 		placeholderData: keepPreviousData
@@ -50,7 +52,7 @@
 		<p class="text-sm text-destructive">Could not load imports: {list.error.message}</p>
 	{:else if list.data && list.data.total === 0}
 		<EmptyState title="Nothing imported yet">
-			<p>Import an .xlsx, .ods or .csv list of freshies.</p>
+			<p>Import an .xlsx, .ods or .csv list of {term.many}.</p>
 			<Button href={href('/imports/new')}>Import list</Button>
 		</EmptyState>
 	{:else}
@@ -118,7 +120,7 @@
 <ConfirmDialog
 	bind:open={discardOpen}
 	title="Discard this draft?"
-	description="Nothing from it was applied, so no freshie changes. To import the file, start a new import."
+	description="Nothing from it was applied, so no {term.one} changes. To import the file, start a new import."
 	confirmLabel="Discard"
 	destructive
 	onConfirm={discard}
