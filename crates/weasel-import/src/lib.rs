@@ -17,4 +17,7 @@ pub use header::{HeaderAnalysis, analyze};
 pub use mapping::{SuggestedMapping, resolve, suggest};
 pub use normalize::normalize;
 pub use service::{ImportPreview, ImportService, PreviewOptions};
-pub use source::{ParsedSource, RawRow, RawTable, ReadOptions, SourceReader, read_source};
+pub use source::{
+    MAX_BYTES, MAX_ROWS, ParsedSource, RawRow, RawTable, ReadOptions, SUPPORTED_EXTENSIONS,
+    SourceReader, kind_for, read_source,
+};

@@ -144,7 +144,6 @@ pub struct Emitted<T> {
 }
 
 impl<T> Emitted<T> {
-    #[allow(dead_code)] // first used by multi-event commands in M3
     pub fn new(value: T, events: Vec<DomainEvent>) -> Self {
         Self { value, events }
     }

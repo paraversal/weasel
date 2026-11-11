@@ -6,7 +6,7 @@ use weasel_core::enums::{ContactStatus, ImportScope, ImportStatus};
 use weasel_core::identity::IdentityStrategy;
 use weasel_core::import::{
     ColumnMapping, Conflict, ConflictResolution, ImportBatch, ImportPlan, ImportSummary,
-    NewImportBatch, PLAN_VERSION, PlanWarning, PlannedRow, RowError,
+    NewImportBatch, PLAN_VERSION, PlanWarning, PlannedRemoval, PlannedRow, RowError,
 };
 use weasel_core::ports::{Clock, ImportRepository, ProgressSink};
 use weasel_core::query::{Page, PageRequest};
@@ -37,6 +37,7 @@ pub struct ImportPreview {
     pub conflicts: Vec<Conflict>,
     pub errors: Vec<RowError>,
     pub warnings: Vec<PlanWarning>,
+    pub removals: Vec<PlannedRemoval>,
 }
 
 pub struct ImportService {
@@ -124,6 +125,7 @@ impl ImportService {
             conflicts: plan.conflicts,
             errors: plan.errors,
             warnings: plan.warnings,
+            removals: plan.removals,
         })
     }
 

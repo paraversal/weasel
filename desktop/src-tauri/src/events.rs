@@ -27,13 +27,9 @@ pub enum DomainEvent {
         error: AppError,
     },
     ContactsChanged {},
-    #[allow(dead_code)]
     CampaignsChanged {},
-    #[allow(dead_code)]
     SendBatchesChanged {},
-    #[allow(dead_code)]
     ImportsChanged {},
-    #[allow(dead_code)]
     ImportProgress {
         #[serde(rename = "progressId")]
         progress_id: String,
@@ -41,7 +37,6 @@ pub enum DomainEvent {
         processed: u64,
         total: u64,
     },
-    #[allow(dead_code)]
     ImportFinished {
         #[serde(rename = "batchId")]
         batch_id: i64,
@@ -58,6 +53,24 @@ pub struct WeaselEvent {
 #[derive(Debug, Default)]
 pub struct EventBus {
     revision: AtomicU64,
+}
+
+/// Anything that can publish a domain event. Commands take this so tests can record
+/// progress events without an `AppHandle`.
+pub trait EventEmitter: Send + Sync {
+    fn emit(&self, event: DomainEvent);
+}
+
+/// Publishes through the app's event bus.
+pub struct AppEmitter<'a> {
+    pub app: &'a AppHandle,
+    pub bus: &'a EventBus,
+}
+
+impl EventEmitter for AppEmitter<'_> {
+    fn emit(&self, event: DomainEvent) {
+        self.bus.emit(self.app, event);
+    }
 }
 
 impl EventBus {

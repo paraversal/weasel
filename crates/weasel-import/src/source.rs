@@ -20,6 +20,9 @@ pub const MAX_BYTES: usize = 20 * 1024 * 1024;
 /// Default cap for data rows: 100 000.
 pub const MAX_ROWS: usize = 100_000;
 
+/// Extensions the reader accepts. The dialog filter and path validation both use this.
+pub const SUPPORTED_EXTENSIONS: &[&str] = &["xlsx", "xlsm", "xls", "ods", "csv"];
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReadOptions {
     /// Worksheet to read; the first sheet when `None`.
@@ -94,7 +97,7 @@ fn reader_for(kind: SourceKind) -> CoreResult<&'static dyn SourceReader> {
         })
 }
 
-fn kind_for(path: &Path) -> CoreResult<SourceKind> {
+pub fn kind_for(path: &Path) -> CoreResult<SourceKind> {
     let ext = path
         .extension()
         .and_then(|ext| ext.to_str())

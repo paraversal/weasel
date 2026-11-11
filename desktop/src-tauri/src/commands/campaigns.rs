@@ -277,7 +277,8 @@ pub async fn campaigns_delete(
     request: CampaignDeleteRequest,
 ) -> Result<(), AppError> {
     let emitted = delete(state.services()?, request).await?;
-    Ok(finish(&app, &state, emitted))
+    finish(&app, &state, emitted);
+    Ok(())
 }
 
 #[tauri::command]

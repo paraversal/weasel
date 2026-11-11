@@ -38,6 +38,14 @@ export const commands = {
 	contactsSetStatus: (request: ContactStatusRequest) => typedError<ContactDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("contacts_set_status", { request })),
 	contactsDelete: (request: ContactDeleteRequest) => typedError<null, AppError_Serialize>(__TAURI_INVOKE("contacts_delete", { request })),
 	contactsStats: () => typedError<ContactStatsDto, AppError_Serialize>(__TAURI_INVOKE("contacts_stats")),
+	importsPickSource: () => typedError<SourceFileDto | null, AppError_Serialize>(__TAURI_INVOKE("imports_pick_source")),
+	importsInspect: (request: ImportInspectRequest_Deserialize) => typedError<SourceInspectionDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("imports_inspect", { request })),
+	importsPreview: (request: ImportPreviewRequest_Deserialize) => typedError<ImportPreviewDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("imports_preview", { request })),
+	importsApply: (request: ImportApplyRequest_Deserialize) => typedError<ImportBatchDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("imports_apply", { request })),
+	importsDiscard: (request: ImportDiscardRequest) => typedError<ImportBatchDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("imports_discard", { request })),
+	importsList: (request: ImportListRequest_Deserialize) => typedError<PageDto<ImportBatchDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("imports_list", { request })),
+	importsGet: (request: ImportGetRequest_Deserialize) => typedError<ImportBatchDetailDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("imports_get", { request })),
+	importsPlanRows: (request: ImportPlanRowsRequest_Deserialize) => typedError<PageDto<PlannedRowDto>, AppError_Serialize>(__TAURI_INVOKE("imports_plan_rows", { request })),
 	sendBatchesList: (request: SendBatchListRequest_Deserialize) => typedError<PageDto<SendBatchDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("send_batches_list", { request })),
 	sendBatchesGet: (request: SendBatchGetRequest) => typedError<SendBatchDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("send_batches_get", { request })),
 	sendBatchesRecipients: (request: SendBatchRecipientsRequest_Deserialize) => typedError<PageDto<SendRecordDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("send_batches_recipients", { request })),
@@ -341,6 +349,42 @@ export type CampaignUpdateRequest_Serialize = {
 	body: string | null,
 };
 
+export type ColumnMappingDto = {
+	firstName: number,
+	lastName: number,
+	email: number,
+};
+
+export type ColumnMappingInputDto = {
+	firstName: number,
+	lastName: number,
+	email: number,
+};
+
+export type ConflictActionDto = "linkContact" | "createNew" | "skip";
+
+export type ConflictDto = {
+	rows: number[],
+	kind: ConflictKindDto,
+	candidates: ContactRefDto[],
+};
+
+export type ConflictKindDto = "duplicateEmailInSource" | "ambiguousHistory" | "ambiguousIdentity" | "manualContact" | "contactMatchedTwice";
+
+export type ConflictResolutionDto = ConflictResolutionDto_Serialize | ConflictResolutionDto_Deserialize;
+
+export type ConflictResolutionDto_Deserialize = {
+	row: number,
+	action: ConflictActionDto,
+	contactId?: number | null,
+};
+
+export type ConflictResolutionDto_Serialize = {
+	row: number,
+	action: ConflictActionDto,
+	contactId: number | null,
+};
+
 export type ContactCreateRequest = ContactCreateRequest_Serialize | ContactCreateRequest_Deserialize;
 
 export type ContactCreateRequest_Deserialize = {
@@ -432,6 +476,16 @@ export type ContactListRequest_Serialize = {
 	offset: number | null,
 };
 
+export type ContactRefDto = {
+	id: number,
+	version: number,
+	firstName: string,
+	lastName: string,
+	email: string,
+	status: ContactStatusDto,
+	source: ContactSourceDto,
+};
+
 export type ContactSortDto = "lastNameAsc" | "lastNameDesc" | "addedDesc" | "emailAsc";
 
 export type ContactSourceDto = "import" | "manual" | "api";
@@ -520,9 +574,183 @@ export type FeatureDescriptorDto = {
 	events: string[],
 };
 
+export type ImportApplyRequest = ImportApplyRequest_Serialize | ImportApplyRequest_Deserialize;
+
+export type ImportApplyRequest_Deserialize = {
+	batchId: number,
+	resolutions: ConflictResolutionDto_Deserialize[],
+	progressId?: string | null,
+};
+
+export type ImportApplyRequest_Serialize = {
+	batchId: number,
+	resolutions: ConflictResolutionDto_Serialize[],
+	progressId: string | null,
+};
+
+export type ImportBatchDetailDto = ImportBatchDetailDto_Serialize | ImportBatchDetailDto_Deserialize;
+
+export type ImportBatchDetailDto_Deserialize = {
+	batch: ImportBatchDto_Deserialize,
+	members: PageDto<ContactDto_Deserialize>,
+};
+
+export type ImportBatchDetailDto_Serialize = {
+	batch: ImportBatchDto_Serialize,
+	members: PageDto<ContactDto_Serialize>,
+};
+
+export type ImportBatchDto = ImportBatchDto_Serialize | ImportBatchDto_Deserialize;
+
+export type ImportBatchDto_Deserialize = {
+	id: number,
+	sourceKind: SourceKindDto,
+	sourceName: string,
+	sheetName?: string | null,
+	scope: ImportScopeDto,
+	status: ImportStatusDto,
+	createdAt: number,
+	appliedAt?: number | null,
+	summary: ImportSummaryDto,
+	error?: string | null,
+};
+
+export type ImportBatchDto_Serialize = {
+	id: number,
+	sourceKind: SourceKindDto,
+	sourceName: string,
+	sheetName: string | null,
+	scope: ImportScopeDto,
+	status: ImportStatusDto,
+	createdAt: number,
+	appliedAt: number | null,
+	summary: ImportSummaryDto,
+	error: string | null,
+};
+
+export type ImportDiscardRequest = {
+	batchId: number,
+};
+
+export type ImportGetRequest = ImportGetRequest_Serialize | ImportGetRequest_Deserialize;
+
+export type ImportGetRequest_Deserialize = {
+	batchId: number,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+export type ImportGetRequest_Serialize = {
+	batchId: number,
+	limit: number | null,
+	offset: number | null,
+};
+
+export type ImportInspectRequest = ImportInspectRequest_Serialize | ImportInspectRequest_Deserialize;
+
+export type ImportInspectRequest_Deserialize = {
+	path: string,
+	sheet?: string | null,
+};
+
+export type ImportInspectRequest_Serialize = {
+	path: string,
+	sheet: string | null,
+};
+
+export type ImportListRequest = ImportListRequest_Serialize | ImportListRequest_Deserialize;
+
+export type ImportListRequest_Deserialize = {
+	status?: ImportStatusDto | null,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+export type ImportListRequest_Serialize = {
+	status: ImportStatusDto | null,
+	limit: number | null,
+	offset: number | null,
+};
+
 export type ImportPhaseDto = "reading" | "matching" | "applying";
 
+export type ImportPlanRowsRequest = ImportPlanRowsRequest_Serialize | ImportPlanRowsRequest_Deserialize;
+
+export type ImportPlanRowsRequest_Deserialize = {
+	batchId: number,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+export type ImportPlanRowsRequest_Serialize = {
+	batchId: number,
+	limit: number | null,
+	offset: number | null,
+};
+
+export type ImportPreviewDto = ImportPreviewDto_Serialize | ImportPreviewDto_Deserialize;
+
+export type ImportPreviewDto_Deserialize = {
+	batch: ImportBatchDto_Deserialize,
+	headers: string[],
+	headerRow: number,
+	suggestedMapping: SuggestedMappingDto_Deserialize,
+	mapping: ColumnMappingDto,
+	summary: ImportSummaryDto,
+	sample: PlannedRowDto[],
+	conflicts: ConflictDto[],
+	errors: RowErrorDto[],
+	warnings: PlanWarningDto[],
+	removals: ContactRefDto[],
+};
+
+export type ImportPreviewDto_Serialize = {
+	batch: ImportBatchDto_Serialize,
+	headers: string[],
+	headerRow: number,
+	suggestedMapping: SuggestedMappingDto_Serialize,
+	mapping: ColumnMappingDto,
+	summary: ImportSummaryDto,
+	sample: PlannedRowDto[],
+	conflicts: ConflictDto[],
+	errors: RowErrorDto[],
+	warnings: PlanWarningDto[],
+	removals: ContactRefDto[],
+};
+
+export type ImportPreviewRequest = ImportPreviewRequest_Serialize | ImportPreviewRequest_Deserialize;
+
+export type ImportPreviewRequest_Deserialize = {
+	path: string,
+	sheet?: string | null,
+	mapping?: ColumnMappingInputDto | null,
+	scope: ImportScopeDto,
+	progressId?: string | null,
+	replacesBatchId?: number | null,
+};
+
+export type ImportPreviewRequest_Serialize = {
+	path: string,
+	sheet: string | null,
+	mapping: ColumnMappingInputDto | null,
+	scope: ImportScopeDto,
+	progressId: string | null,
+	replacesBatchId: number | null,
+};
+
+export type ImportScopeDto = "roster" | "delta";
+
 export type ImportStatusDto = "draft" | "applied" | "failed" | "discarded";
+
+export type ImportSummaryDto = {
+	rowCount: number,
+	added: number,
+	updated: number,
+	removed: number,
+	conflicts: number,
+	unchanged: number,
+	invalid: number,
+};
 
 /**  A page of wire DTOs. `total` is an `i64` because JavaScript numbers are doubles. */
 export type PageDto<T> = {
@@ -532,11 +760,34 @@ export type PageDto<T> = {
 	limit: number,
 };
 
+export type PlanActionDto = { kind: "add" } | { kind: "updateDetails"; target: ContactRefDto } | { kind: "updateEmail"; target: ContactRefDto } | { kind: "restore"; target: ContactRefDto } | { kind: "noop"; contact_id: number } | { kind: "conflict"; index: number };
+
+export type PlanWarningDto = { kind: "largeRemoval"; count: number; active_import_contacts: number } | { kind: "sameFileAsBatch"; batch_id: number } | { kind: "ignoredTrailingRows"; count: number };
+
+export type PlannedRowDto = {
+	row: number,
+	firstName: string,
+	lastName: string,
+	email: string,
+	action: PlanActionDto,
+};
+
 /**  The addresses copied for a send, so the UI can show and re-copy them. */
 export type PreparedSendDto = {
 	batchId: number,
 	recipientCount: number,
 	emails: string[],
+};
+
+export type RowErrorDto = {
+	row: number,
+	field: string,
+	reason: string,
+};
+
+export type SampleRowDto = {
+	row: number,
+	cells: string[],
 };
 
 export type SendBatchDto = SendBatchDto_Serialize | SendBatchDto_Deserialize;
@@ -653,6 +904,57 @@ export type SettingsUpdateRequest_Deserialize = {
 
 export type SettingsUpdateRequest_Serialize = {
 	patch: SettingsPatchDto_Serialize,
+};
+
+export type SourceFileDto = {
+	path: string,
+	name: string,
+	kind: SourceKindDto,
+	bytes: number,
+};
+
+export type SourceInspectionDto = SourceInspectionDto_Serialize | SourceInspectionDto_Deserialize;
+
+export type SourceInspectionDto_Deserialize = {
+	name: string,
+	kind: SourceKindDto,
+	sheets: string[],
+	sheetName?: string | null,
+	headerRow: number,
+	headers: string[],
+	suggestedMapping: SuggestedMappingDto_Deserialize,
+	sampleRows: SampleRowDto[],
+	rowCount: number,
+	ignoredTrailing: number,
+};
+
+export type SourceInspectionDto_Serialize = {
+	name: string,
+	kind: SourceKindDto,
+	sheets: string[],
+	sheetName: string | null,
+	headerRow: number,
+	headers: string[],
+	suggestedMapping: SuggestedMappingDto_Serialize,
+	sampleRows: SampleRowDto[],
+	rowCount: number,
+	ignoredTrailing: number,
+};
+
+export type SourceKindDto = "xlsx" | "xls" | "ods" | "csv" | "manual";
+
+export type SuggestedMappingDto = SuggestedMappingDto_Serialize | SuggestedMappingDto_Deserialize;
+
+export type SuggestedMappingDto_Deserialize = {
+	firstName?: number | null,
+	lastName?: number | null,
+	email?: number | null,
+};
+
+export type SuggestedMappingDto_Serialize = {
+	firstName: number | null,
+	lastName: number | null,
+	email: number | null,
 };
 
 export type ThemeDto = "system" | "light" | "dark";

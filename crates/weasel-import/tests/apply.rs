@@ -272,6 +272,8 @@ async fn roster_removal_keeps_send_history_and_a_returnee_is_restored() {
     h.clock.advance(1_000);
     let without_alice = h.preview(&source(&[bob()])).await;
     assert_eq!(without_alice.summary.removed, 1);
+    assert_eq!(without_alice.removals.len(), 1);
+    assert_eq!(without_alice.removals[0].contact.id, person.id);
     h.apply(without_alice.batch.id).await;
     assert_eq!(h.status(person.id).await, ContactStatus::Removed);
 

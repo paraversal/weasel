@@ -32,18 +32,14 @@ pub struct Services {
     pub settings: SettingsService,
     pub contacts: ContactService,
     pub imports: ImportService,
-    // TODO(04-exec): commands start consuming these.
-    #[allow(dead_code)]
     pub campaigns: CampaignService,
-    #[allow(dead_code)]
     pub sends: SendService,
     pub audit: Arc<dyn AuditRepository>,
     // Ports are composed here once so features only add commands.
-    #[allow(dead_code)]
+    #[allow(dead_code)] // first read by the backup command in M4
     pub clock: Arc<dyn Clock>,
-    #[allow(dead_code)]
+    #[allow(dead_code)] // SendService owns the clipboard; this keeps the composition explicit
     pub clipboard: Arc<dyn Clipboard>,
-    #[allow(dead_code)]
     pub dialogs: Arc<dyn FileDialog>,
 }
 
