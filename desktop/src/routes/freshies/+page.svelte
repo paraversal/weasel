@@ -7,14 +7,22 @@
 	import FilterTabs from '$lib/components/app/FilterTabs.svelte';
 	import Pager from '$lib/components/app/Pager.svelte';
 	import SearchInput from '$lib/components/app/SearchInput.svelte';
+	import SortHeader from '$lib/components/app/SortHeader.svelte';
 	import StatusBadge from '$lib/components/app/StatusBadge.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
-	import type { ContactStatusDto } from '$lib/ipc/bindings';
-	import { contactQueries } from '$lib/ipc/queries';
+	import type { ContactSortDto, ContactStatusDto } from '$lib/ipc/bindings';
+	import { contactQueries, importQueries } from '$lib/ipc/queries';
 	import AddFreshieDialog from '$lib/screens/freshies/AddFreshieDialog.svelte';
 	import { formatDate } from '$lib/utils/format';
-	import { PAGE_SIZE, listHref, offsetFor, pageParam, param } from '$lib/utils/list-params';
+	import {
+		PAGE_SIZE,
+		intParam,
+		listHref,
+		offsetFor,
+		pageParam,
+		param
+	} from '$lib/utils/list-params';
 	import { go, href } from '$lib/utils/paths';
 
 	const tabs = [
@@ -34,10 +42,31 @@
 		tab === 'all' ? ['active', 'removed', 'archived'] : [tab]
 	);
 
+	const sorts: Record<ContactSortDto, 'asc' | 'desc'> = {
+		lastNameAsc: 'asc',
+		lastNameDesc: 'desc',
+		emailAsc: 'asc',
+		addedDesc: 'desc'
+	};
+	const sort = $derived.by((): ContactSortDto => {
+		const raw = param(page.url, 'sort');
+		return raw && raw in sorts ? (raw as ContactSortDto) : 'lastNameAsc';
+	});
+	const sortHref = (value: string) =>
+		href(listHref(page.url, { sort: value === 'lastNameAsc' ? null : value }));
+
+	const importBatchId = $derived(intParam(page.url, 'import'));
+
 	const list = createQuery(() => ({
-		...contactQueries.list({ search, statuses, limit: PAGE_SIZE, offset }),
+		...contactQueries.list({ search, statuses, importBatchId, sort, limit: PAGE_SIZE, offset }),
 		placeholderData: keepPreviousData
 	}));
+
+	// Applied imports, newest first: names for the Import column and the import filter.
+	const imports = createQuery(() => importQueries.list({ status: 'applied', limit: 500 }));
+	const importNames = $derived(
+		new Map((imports.data?.items ?? []).map((batch) => [batch.id, batch.sourceName]))
+	);
 
 	let addOpen = $state(false);
 
@@ -70,11 +99,25 @@
 				active: t.value === tab
 			}))}
 		/>
+		{#if imports.data && imports.data.items.length > 0}
+			<select
+				aria-label="Import"
+				class="h-8 max-w-56 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+				value={importBatchId ?? ''}
+				onchange={(event) =>
+					go(listHref(page.url, { import: event.currentTarget.value }), { reset: false })}
+			>
+				<option value="">All imports</option>
+				{#each imports.data.items as batch (batch.id)}
+					<option value={batch.id}>{batch.sourceName} · {formatDate(batch.appliedAt)}</option>
+				{/each}
+			</select>
+		{/if}
 	</div>
 
 	{#if list.isError}
 		<p class="text-sm text-destructive">Could not load freshies: {list.error.message}</p>
-	{:else if list.data && list.data.total === 0 && !search && tab === 'active'}
+	{:else if list.data && list.data.total === 0 && !search && !importBatchId && tab === 'active'}
 		<EmptyState title="No freshies yet">
 			<p>Import a spreadsheet or add someone by hand.</p>
 			<div class="flex gap-2">
@@ -86,11 +129,30 @@
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
-					<Table.Head>Name</Table.Head>
-					<Table.Head>Email</Table.Head>
+					<SortHeader
+						label="Name"
+						sorts={['lastNameAsc', 'lastNameDesc']}
+						current={sort}
+						direction={sorts}
+						hrefFor={sortHref}
+					/>
+					<SortHeader
+						label="Email"
+						sorts={['emailAsc']}
+						current={sort}
+						direction={sorts}
+						hrefFor={sortHref}
+					/>
 					<Table.Head>Status</Table.Head>
-					<Table.Head>Source</Table.Head>
-					<Table.Head class="text-right">Added</Table.Head>
+					<Table.Head>Import</Table.Head>
+					<SortHeader
+						label="Added"
+						sorts={['addedDesc']}
+						current={sort}
+						direction={sorts}
+						hrefFor={sortHref}
+						class="text-right"
+					/>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -103,7 +165,19 @@
 						</Table.Cell>
 						<Table.Cell>{contact.email}</Table.Cell>
 						<Table.Cell><StatusBadge status={contact.status} /></Table.Cell>
-						<Table.Cell class="text-muted-foreground capitalize">{contact.source}</Table.Cell>
+						<Table.Cell class="max-w-48 truncate text-muted-foreground">
+							{#if contact.importBatchId}
+								<a
+									href={href(`/imports/${contact.importBatchId}`)}
+									class="hover:underline"
+									onclick={(event: MouseEvent) => event.stopPropagation()}
+								>
+									{importNames.get(contact.importBatchId) ?? `Import #${contact.importBatchId}`}
+								</a>
+							{:else}
+								Added by hand
+							{/if}
+						</Table.Cell>
 						<Table.Cell class="text-right text-muted-foreground">
 							{formatDate(contact.dateAdded)}
 						</Table.Cell>
