@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { PaletteEntry } from '$lib/features/registry';
+import type { PaletteEntry } from './nav';
 
 import CommandPalette from './CommandPalette.svelte';
 
@@ -13,8 +13,7 @@ function entry(overrides: Partial<PaletteEntry>): PaletteEntry {
 		id: 'test.command',
 		title: 'Test command',
 		group: 'Test',
-		featureId: 'test',
-		run: () => {},
+		href: '/',
 		...overrides
 	};
 }

@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/state';
 
-	import type { NavEntry } from '$lib/features/registry';
+	import type { NavItem } from '$lib/shell/nav';
 	import { icons } from '$lib/shell/icons';
 	import { resolvePath } from '$lib/utils/paths';
 
-	let { items }: { items: NavEntry[] } = $props();
+	let { items }: { items: NavItem[] } = $props();
 
 	function isActive(href: string): boolean {
 		const path = page.url.pathname;
@@ -14,7 +14,7 @@
 	}
 </script>
 
-<!-- Manifest hrefs are runtime strings; resolvePath applies the app base for us. -->
+<!-- Nav hrefs are runtime strings; resolvePath applies the app base for us. -->
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
 <aside
 	class="border-border-subtle flex w-56 shrink-0 flex-col gap-1 border-r bg-surface-raised/40 p-2 max-[1100px]:w-14"

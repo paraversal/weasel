@@ -5,16 +5,14 @@
   "engines": { "node": ">=24" },
   "scripts": {
     "dev": "pnpm -C desktop tauri dev",
-    "dev:web": "pnpm -C desktop dev:mock",
+    "dev:demo": "pnpm seed:demo --data-dir .dev-data/dev --force && WEASEL_DATA_DIR=\"$PWD/.dev-data\" pnpm dev",
     "tauri": "pnpm -C desktop tauri",
     "build": "pnpm -C desktop build",
     "check": "pnpm -C desktop check",
     "lint": "pnpm -C desktop lint",
-    "test": "pnpm -C desktop test && node --test tools/*.test.mjs",
-    "test:e2e": "pnpm -C desktop test:e2e",
+    "test": "pnpm -C desktop test",
     "bindings": "cargo run -q -p weasel-desktop --bin export-bindings",
     "seed:demo": "cargo run -q -p weasel-testkit --bin seed-demo --",
-    "gen": "node tools/gen-feature.mjs",
     "check:layers": "bash tools/check-layers.sh",
     "verify": "pnpm check && pnpm lint && pnpm test && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && pnpm check:layers"
   }

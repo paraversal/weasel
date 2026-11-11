@@ -1,0 +1,56 @@
+import type { IconName } from './icons';
+
+/** Sidebar entries, in display order. Adding a screen means adding a route and a line here. */
+export interface NavItem {
+	label: string;
+	href: string;
+	icon: IconName;
+	/** Two-key sequence such as `"g f"`; Help uses the shell's `?` binding instead. */
+	shortcut?: string;
+}
+
+export const NAV: NavItem[] = [
+	{ label: 'Dashboard', href: '/', icon: 'dashboard', shortcut: 'g d' },
+	{ label: 'Freshies', href: '/freshies', icon: 'users', shortcut: 'g f' },
+	{ label: 'Campaigns', href: '/campaigns', icon: 'mail', shortcut: 'g c' },
+	{ label: 'History', href: '/history', icon: 'history', shortcut: 'g h' },
+	{ label: 'Imports', href: '/imports', icon: 'upload', shortcut: 'g i' },
+	{ label: 'Settings', href: '/settings', icon: 'settings', shortcut: 'g s' },
+	{ label: 'Help', href: '/help', icon: 'help' }
+];
+
+/** A palette command is a destination; screens react to query params such as `?new=1`. */
+export interface PaletteEntry {
+	id: string;
+	title: string;
+	group: string;
+	href: string;
+	keywords?: string[];
+	shortcut?: string;
+}
+
+export const PALETTE: PaletteEntry[] = [
+	{ id: 'imports.new', title: 'Import list', group: 'Actions', href: '/imports/new' },
+	{
+		id: 'campaigns.new',
+		title: 'New campaign',
+		group: 'Actions',
+		href: '/campaigns?new=1',
+		keywords: ['create']
+	},
+	{
+		id: 'freshies.new',
+		title: 'Add freshie',
+		group: 'Actions',
+		href: '/freshies?new=1',
+		keywords: ['contact', 'create']
+	},
+	...NAV.map((item) => ({
+		id: `nav:${item.href}`,
+		title: `Go to ${item.label}`,
+		group: 'Navigation',
+		href: item.href,
+		keywords: [item.label],
+		shortcut: item.shortcut
+	}))
+];

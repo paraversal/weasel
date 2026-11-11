@@ -1,56 +1,30 @@
-# sv
+# Weasel desktop
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+SvelteKit (static SPA) inside a Tauri 2 window. Run everything from the repository root.
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
+## Working on screens
 
 ```sh
-# create a new project
-npx sv create my-app
+pnpm dev:demo
 ```
 
-To recreate this project with the same configuration:
+This seeds a demo database into `.dev-data/dev/` (gitignored, replaced on every run) and
+opens the app on it via `WEASEL_DATA_DIR`. Debug builds always append `dev/` to the data
+directory, which is why the seed goes there. `pnpm dev` opens the app on your normal
+development database instead.
 
-```sh
-# recreate this project
-npx sv@1.2.0 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" playwright="demo:no" tailwindcss="plugins:none" --no-install desktop
-```
+There is no browser-only mode: screens talk to the real Rust backend.
 
-## Adding features
+## Layout
 
-Add features to your project with `sv add`:
+- `src/routes/<screen>/` — one route per screen; `src/lib/shell/nav.ts` lists them.
+- `src/lib/screens/<screen>/` — components and state for a screen.
+- `src/lib/components/ui/` — shadcn-svelte primitives (`pnpm exec shadcn-svelte add …`).
+- `src/lib/components/app/` — shared app components (pager, search, dialogs).
+- `src/lib/ipc/` — generated bindings, `call()`, query keys and event invalidation. The
+  only place allowed to import `@tauri-apps/api`.
 
-```sh
-npx sv add
-```
+## Checks
 
-For example, to add Tailwind CSS:
-
-```sh
-npx sv add tailwindcss
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+`pnpm verify` runs type checks, lint, vitest and the Rust suite. After changing a Rust
+command, run `pnpm bindings` and commit the regenerated `bindings.ts`.

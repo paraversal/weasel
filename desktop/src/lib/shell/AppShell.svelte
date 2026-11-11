@@ -1,12 +1,8 @@
 <script lang="ts">
-	/* Manifest targets are runtime strings; resolvePath applies the app base for us. */
+	/* Palette targets are runtime strings; resolvePath applies the app base for us. */
 	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { goto } from '$app/navigation';
-	import { useQueryClient } from '@tanstack/svelte-query';
 
-	import { createRegistry } from '$lib/features/registry.svelte';
-	import type { CommandContext } from '$lib/features/types';
-	import { toast } from '$lib/stores/toasts.svelte';
 	import { resolvePath } from '$lib/utils/paths';
 	import { ShortcutMatcher, detectPlatform, type ShortcutBinding } from '$lib/utils/shortcuts';
 
@@ -15,6 +11,7 @@
 	import Sidebar from './Sidebar.svelte';
 	import Toasts from './Toasts.svelte';
 	import Topbar from './Topbar.svelte';
+	import { NAV, PALETTE, type PaletteEntry } from './nav';
 	import type { ThemeController } from '$lib/stores/theme.svelte';
 
 	let {
@@ -25,29 +22,11 @@
 		theme: ThemeController;
 	} = $props();
 
-	const registry = createRegistry();
-	const queryClient = useQueryClient();
 	const platform = detectPlatform();
 	let paletteOpen = $state(false);
 
-	const context: CommandContext = {
-		goto: (path) => goto(resolvePath(path)),
-		queryClient,
-		toast
-	};
-
-	function run(entry: {
-		id: string;
-		when?: () => boolean;
-		run: (context: CommandContext) => unknown;
-	}) {
-		if (entry.when && !entry.when()) return;
-		try {
-			const result = entry.run(context);
-			if (result instanceof Promise) result.catch((error: unknown) => toast.ipcError(error));
-		} catch (error) {
-			toast.ipcError(error);
-		}
+	function run(entry: PaletteEntry) {
+		void goto(resolvePath(entry.href));
 	}
 
 	const bindings = $derived<ShortcutBinding[]>([
@@ -58,14 +37,13 @@
 				if (!paletteOpen) void goto(resolvePath('/help'));
 			}
 		},
-		...registry.current.paletteCommands
-			.filter((entry) => entry.shortcut)
-			.map((entry) => ({ spec: entry.shortcut ?? '', run: () => run(entry) }))
+		...PALETTE.filter((entry) => entry.shortcut).map((entry) => ({
+			spec: entry.shortcut ?? '',
+			run: () => run(entry)
+		}))
 	]);
 
-	let reportedWarnings = '';
-
-	// One global listener; re-created when the registry's shortcut set changes.
+	// One global listener; re-created if the bindings change.
 	$effect(() => {
 		const matcher = new ShortcutMatcher(bindings, { platform });
 		const onKeydown = (event: KeyboardEvent) => {
@@ -74,20 +52,10 @@
 		window.addEventListener('keydown', onKeydown);
 		return () => window.removeEventListener('keydown', onKeydown);
 	});
-
-	// Startup diagnostics belong in the log, not in a toast the user cannot act on.
-	$effect(() => {
-		const signature = registry.current.warnings.map((w) => `${w.code}:${w.message}`).join('|');
-		if (!signature || signature === reportedWarnings) return;
-		reportedWarnings = signature;
-		for (const warning of registry.current.warnings) {
-			console.warn(`feature registry: ${warning.message}`);
-		}
-	});
 </script>
 
 <div class="grid h-dvh grid-cols-[auto_minmax(0,1fr)] overflow-hidden bg-background">
-	<Sidebar items={registry.current.navItems} />
+	<Sidebar items={NAV} />
 	<div class="flex min-h-0 min-w-0 flex-col">
 		<Topbar onOpenPalette={() => (paletteOpen = true)} {theme} {platform} />
 		<main class="min-h-0 flex-1 overflow-auto">
@@ -100,10 +68,5 @@
 	</div>
 </div>
 
-<CommandPalette
-	bind:open={paletteOpen}
-	commands={registry.current.paletteCommands}
-	{platform}
-	onRun={run}
-/>
+<CommandPalette bind:open={paletteOpen} commands={PALETTE} {platform} onRun={run} />
 <Toasts theme={theme.resolved} />

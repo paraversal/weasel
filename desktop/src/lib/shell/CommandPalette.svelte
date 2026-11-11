@@ -2,7 +2,7 @@
 	import { SvelteMap } from 'svelte/reactivity';
 
 	import * as Command from '$lib/components/ui/command/index.js';
-	import type { PaletteEntry } from '$lib/features/registry';
+	import type { PaletteEntry } from './nav';
 	import { formatShortcut, type Platform } from '$lib/utils/shortcuts';
 
 	let {
@@ -19,11 +19,9 @@
 
 	let query = $state('');
 
-	const available = $derived(commands.filter((entry) => !entry.when || entry.when()));
-
 	const groups = $derived.by(() => {
 		const byGroup = new SvelteMap<string, PaletteEntry[]>();
-		for (const entry of available) {
+		for (const entry of commands) {
 			const list = byGroup.get(entry.group);
 			if (list) list.push(entry);
 			else byGroup.set(entry.group, [entry]);

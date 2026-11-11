@@ -5,7 +5,6 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"dev:mock": "VITE_IPC_MOCK=1 vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
@@ -14,7 +13,6 @@
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"test": "vitest run",
-		"test:e2e": "playwright test",
 		"tauri": "tauri"
 	},
 	"devDependencies": {
@@ -22,7 +20,6 @@
 		"@fontsource-variable/geist": "^5.3.0",
 		"@internationalized/date": "^3.12.0",
 		"@lucide/svelte": "^1.72.0",
-		"@playwright/test": "^1.65.0",
 		"@sveltejs/adapter-static": "^4.0.1",
 		"@sveltejs/kit": "^3.2.0",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
