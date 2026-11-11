@@ -1,6 +1,10 @@
 # weasel
 Simple email campaign management
 
+> **Rewrite planned:** the Textual TUI is being replaced by a Tauri 2 + SvelteKit
+> desktop app. See [`docs/rewrite/`](docs/rewrite/README.md) for the architecture,
+> data model, extensibility model, UI design and phased delivery plan.
+
 # roadmap
 
 ### Better managment of email lists
