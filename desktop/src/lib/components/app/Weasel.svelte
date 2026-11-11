@@ -26,10 +26,13 @@
 	const eyeX = $derived(clamp(look.x) * 3);
 	const eyeY = $derived(clamp(look.y) * 3);
 	const g = $derived(Math.max(0, Math.min(1, gape)));
-	const mouthCy = $derived(34 + 7 * g);
-	const mouthRx = $derived(12 + 9 * g);
-	const mouthRy = $derived(6 + 11 * g);
-	const fangTop = $derived(mouthCy - mouthRy + 1);
+	// Hungry mouth: a wide open smile (flat top under the nose, round bottom).
+	const mouthW = $derived(10 + 8 * g);
+	const mouthH = $derived(10 + 16 * g);
+	const mouth = $derived(
+		`M${-mouthW} 25 C${-mouthW} ${25 + mouthH * 1.1} ${mouthW} ${25 + mouthH * 1.1} ${mouthW} 25 Q0 29 ${-mouthW} 25Z`
+	);
+	const clipId = $props.id();
 
 	const brown = '#9a5b2e';
 	const ink = '#3b2418';
@@ -68,11 +71,25 @@
 		<circle cx="-34" cy="16" r="8" fill="#f2b8a6" />
 		<circle cx="34" cy="16" r="8" fill="#f2b8a6" />
 	{:else}
+		{#if mood === 'hungry'}
+			<ellipse cx="-36" cy="14" rx="9" ry="6" fill="#f0a593" opacity="0.7" />
+			<ellipse cx="36" cy="14" rx="9" ry="6" fill="#f0a593" opacity="0.7" />
+		{/if}
 		<g style:transform="translate({eyeX}px, {eyeY}px)">
-			<ellipse cx="-25" cy="-22" rx="8.5" ry="9.5" fill={eye} />
-			<circle cx="-22" cy="-25.5" r="2.7" fill="#fff" />
-			<ellipse cx="25" cy="-22" rx="8.5" ry="9.5" fill={eye} />
-			<circle cx="28" cy="-25.5" r="2.7" fill="#fff" />
+			{#if mood === 'hungry'}
+				<!-- Bigger, sparkly eyes: excited, not menacing. -->
+				<ellipse cx="-25" cy="-22" rx="9.5" ry="10.5" fill={eye} />
+				<circle cx="-21.5" cy="-26" r="3.6" fill="#fff" />
+				<circle cx="-28" cy="-17.5" r="1.6" fill="#fff" />
+				<ellipse cx="25" cy="-22" rx="9.5" ry="10.5" fill={eye} />
+				<circle cx="28.5" cy="-26" r="3.6" fill="#fff" />
+				<circle cx="22" cy="-17.5" r="1.6" fill="#fff" />
+			{:else}
+				<ellipse cx="-25" cy="-22" rx="8.5" ry="9.5" fill={eye} />
+				<circle cx="-22" cy="-25.5" r="2.7" fill="#fff" />
+				<ellipse cx="25" cy="-22" rx="8.5" ry="9.5" fill={eye} />
+				<circle cx="28" cy="-25.5" r="2.7" fill="#fff" />
+			{/if}
 		</g>
 		{#if mood === 'picky'}
 			<!-- Lowered lids: unimpressed. -->
@@ -81,18 +98,15 @@
 	{/if}
 
 	{#if mood === 'hungry'}
-		<ellipse cx="0" cy={mouthCy} rx={mouthRx} ry={mouthRy} fill="#4a1620" />
+		<clipPath id={clipId}><path d={mouth} /></clipPath>
+		<path d={mouth} fill="#7a2f3b" />
 		<ellipse
 			cx="0"
-			cy={mouthCy + mouthRy - 5}
-			rx={mouthRx * 0.6}
-			ry={Math.max(2.5, mouthRy * 0.32)}
-			fill="#e0707f"
-		/>
-		<path
-			d="M-10 {fangTop} L-6.5 {fangTop + 8} L-3 {fangTop}Z M10 {fangTop} L6.5 {fangTop +
-				8} L3 {fangTop}Z"
-			fill="#fff"
+			cy={25 + mouthH * 0.85}
+			rx={mouthW * 0.7}
+			ry={mouthH * 0.35}
+			fill="#f08c9a"
+			clip-path="url(#{clipId})"
 		/>
 	{:else if mood === 'picky'}
 		<path

@@ -19,7 +19,11 @@ export interface FileDrag {
 export function onFileDrag(handler: (drag: FileDrag) => void): () => void {
 	let unlisten: (() => void) | undefined;
 	let disposed = false;
-	const scale = () => (typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1);
+	// Despite the `PhysicalPosition` type, macOS reports drag positions in points (the
+	// same units as CSS pixels); dividing there put the weasel at half the cursor's
+	// coordinates. Other platforms report physical pixels.
+	const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.userAgent);
+	const scale = () => (isMac || typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1);
 	try {
 		void getCurrentWebview()
 			.onDragDropEvent(({ payload }) => {
@@ -27,7 +31,6 @@ export function onFileDrag(handler: (drag: FileDrag) => void): () => void {
 					handler({ phase: 'leave', paths: [], x: null, y: null });
 					return;
 				}
-				// Tauri reports physical pixels; the overlay works in CSS pixels.
 				const x = payload.position.x / scale();
 				const y = payload.position.y / scale();
 				const paths = payload.type === 'over' ? [] : payload.paths;
