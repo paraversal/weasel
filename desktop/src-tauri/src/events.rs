@@ -12,13 +12,13 @@ use tauri_specta::Event;
 
 use crate::error::AppError;
 
-/// Wire contract: variants are added together with the features that emit them, and the
-/// enum is exported to TypeScript in full.
-#[allow(dead_code)]
+/// Wire contract: the enum is exported to TypeScript in full, so a variant can exist
+/// before the feature that emits it lands.
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum DomainEvent {
     SettingsChanged { keys: Vec<String> },
+    #[allow(dead_code)] // emitted by command wrappers once a feature has a failing path
     OperationFailed { operation: String, error: AppError },
     // Later exec plans add: ContactsChanged, CampaignsChanged, SendBatchesChanged,
     // ImportsChanged, ImportProgress, ImportFinished.
@@ -30,14 +30,11 @@ pub struct WeaselEvent {
     pub event: DomainEvent,
 }
 
-// TODO(M5): drop this allow once the settings command emits.
-#[allow(dead_code)]
 #[derive(Debug, Default)]
 pub struct EventBus {
     revision: AtomicU64,
 }
 
-#[allow(dead_code)]
 impl EventBus {
     pub fn new() -> Self {
         Self::default()

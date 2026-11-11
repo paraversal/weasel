@@ -2,10 +2,6 @@
 //!
 //! Boot failure is a *state*, not a crash: the window still opens and `app_health`
 //! reports why the database is unavailable.
-//!
-//! Only the command layer reads this state; the boot path just installs it.
-
-#![allow(dead_code)] // removed once the command layer lands
 
 use std::sync::Arc;
 
@@ -21,8 +17,13 @@ use crate::events::EventBus;
 pub struct Services {
     pub store: Store,
     pub settings: SettingsService,
+    // Ports are composed here once so features only add commands; the first consumers
+    // arrive with imports and the campaign sender.
+    #[allow(dead_code)]
     pub clock: Arc<dyn Clock>,
+    #[allow(dead_code)]
     pub clipboard: Arc<dyn Clipboard>,
+    #[allow(dead_code)]
     pub dialogs: Arc<dyn FileDialog>,
 }
 

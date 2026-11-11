@@ -8,6 +8,7 @@ mod events;
 mod state;
 
 pub use bindings::export as export_bindings;
+pub use commands::feature_descriptors;
 
 use std::path::PathBuf;
 use std::sync::Arc;

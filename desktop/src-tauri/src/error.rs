@@ -190,6 +190,56 @@ mod tests {
     }
 
     #[test]
+    fn every_core_error_maps_to_the_documented_row() {
+        let cases = [
+            (
+                CoreError::validation("theme", "unknown value"),
+                ErrorCode::Validation,
+                false,
+            ),
+            (
+                CoreError::NotFound {
+                    entity: "contact",
+                    id: "42".to_string(),
+                },
+                ErrorCode::NotFound,
+                false,
+            ),
+            (
+                CoreError::Conflict("already sent".to_string()),
+                ErrorCode::Conflict,
+                false,
+            ),
+            (
+                CoreError::InvalidState("no campaign".to_string()),
+                ErrorCode::InvalidState,
+                false,
+            ),
+            (CoreError::io("disk full"), ErrorCode::Io, true),
+            (
+                CoreError::Internal(Box::new(std::io::Error::other("boom"))),
+                ErrorCode::Internal,
+                false,
+            ),
+        ];
+        for (core, code, retryable) in cases {
+            let mapped = AppError::from(core);
+            assert_eq!(mapped.code, code);
+            assert_eq!(mapped.retryable, retryable);
+        }
+    }
+
+    #[test]
+    fn internal_errors_carry_a_log_id_and_hide_the_cause() {
+        let mapped = AppError::from(CoreError::Internal(Box::new(std::io::Error::other(
+            "secret detail",
+        ))));
+        let details = mapped.details.expect("internal errors carry details");
+        assert!(details.get("logId").and_then(|id| id.as_str()).is_some());
+        assert!(!mapped.message.contains("secret detail"));
+    }
+
+    #[test]
     fn io_is_retryable() {
         let error = AppError::from(CoreError::io("disk full"));
         assert_eq!(error.code, ErrorCode::Io);
