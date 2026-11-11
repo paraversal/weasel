@@ -110,7 +110,7 @@ impl FakeClipboard {
 impl Clipboard for FakeClipboard {
     async fn write_text(&self, text: String) -> CoreResult<()> {
         if self.fail_next.swap(false, Ordering::SeqCst) {
-            return Err(CoreError::InvalidState("clipboard unavailable".to_owned()));
+            return Err(CoreError::Io("clipboard unavailable".to_owned()));
         }
         self.writes
             .lock()

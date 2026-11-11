@@ -1,10 +1,15 @@
 //! Campaign domain types and status transitions.
 
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    CoreError, CoreResult,
     enums::{CampaignStatus, ContactStatus},
-    query::PageRequest,
+    limits,
+    ports::{CampaignRepository, Clock},
+    query::{Page, PageRequest},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -97,6 +102,152 @@ pub fn can_transition(from: CampaignStatus, to: CampaignStatus) -> bool {
         (from, to),
         (Draft, Active) | (Draft, Archived) | (Active, Archived) | (Archived, Active)
     )
+}
+
+/// Manual campaign edits: validation, transitions, and the no-op shortcut.
+pub struct CampaignService {
+    repo: Arc<dyn CampaignRepository>,
+    clock: Arc<dyn Clock>,
+}
+
+impl CampaignService {
+    pub fn new(repo: Arc<dyn CampaignRepository>, clock: Arc<dyn Clock>) -> Self {
+        Self { repo, clock }
+    }
+
+    pub async fn create(&self, input: NewCampaign) -> CoreResult<Campaign> {
+        let campaign = NewCampaign {
+            name: cleaned_campaign_name(&input.name)?,
+            description: checked_text("description", &input.description, limits::DESCRIPTION_MAX)?,
+            subject: checked_text("subject", &input.subject, limits::SUBJECT_MAX)?,
+            body: checked_text("body", &input.body, limits::BODY_MAX)?,
+        };
+        self.repo.create(campaign, self.clock.now_ms()).await
+    }
+
+    /// Applies only the fields that differ; an empty patch returns the stored row
+    /// without writing.
+    pub async fn update(&self, id: i64, patch: CampaignPatch) -> CoreResult<Campaign> {
+        let current = self.repo.get(id).await?;
+        let version = patch.version;
+
+        let name = match &patch.name {
+            Some(raw) => cleaned_campaign_name(raw)?,
+            None => current.name.clone(),
+        };
+        let description = match &patch.description {
+            Some(raw) => checked_text("description", raw, limits::DESCRIPTION_MAX)?,
+            None => current.description.clone(),
+        };
+        let subject = match &patch.subject {
+            Some(raw) => checked_text("subject", raw, limits::SUBJECT_MAX)?,
+            None => current.subject.clone(),
+        };
+        let body = match &patch.body {
+            Some(raw) => checked_text("body", raw, limits::BODY_MAX)?,
+            None => current.body.clone(),
+        };
+
+        let mut changes = CampaignPatch {
+            version,
+            ..CampaignPatch::default()
+        };
+        if name != current.name {
+            changes.name = Some(name);
+        }
+        if description != current.description {
+            changes.description = Some(description);
+        }
+        if subject != current.subject {
+            changes.subject = Some(subject);
+        }
+        if body != current.body {
+            changes.body = Some(body);
+        }
+        if changes.name.is_none()
+            && changes.description.is_none()
+            && changes.subject.is_none()
+            && changes.body.is_none()
+        {
+            return Ok(current);
+        }
+
+        self.repo.update(id, changes, self.clock.now_ms()).await
+    }
+
+    pub async fn set_status(
+        &self,
+        id: i64,
+        expected_version: i64,
+        status: CampaignStatus,
+    ) -> CoreResult<Campaign> {
+        let current = self.repo.get(id).await?;
+        if !can_transition(current.status, status) {
+            return Err(CoreError::InvalidState(format!(
+                "A campaign cannot move from {} to {}.",
+                current.status.as_str(),
+                status.as_str()
+            )));
+        }
+        self.repo
+            .set_status(id, expected_version, status, self.clock.now_ms())
+            .await
+    }
+
+    pub async fn delete(&self, id: i64, expected_version: i64) -> CoreResult<()> {
+        self.repo
+            .delete(id, expected_version, self.clock.now_ms())
+            .await
+    }
+
+    pub async fn get(&self, id: i64) -> CoreResult<Campaign> {
+        self.repo.get(id).await
+    }
+
+    pub async fn list(&self, query: &CampaignQuery) -> CoreResult<Page<Campaign>> {
+        self.repo.list(query).await
+    }
+
+    pub async fn stats(&self, id: i64) -> CoreResult<CampaignStats> {
+        self.repo.stats(id).await
+    }
+
+    pub async fn audience(
+        &self,
+        id: i64,
+        filter: AudienceFilter,
+        search: Option<&str>,
+        page: &PageRequest,
+    ) -> CoreResult<Page<AudienceMember>> {
+        self.repo.audience(id, filter, search, page).await
+    }
+}
+
+fn cleaned_campaign_name(raw: &str) -> CoreResult<String> {
+    let name = raw.trim();
+    if name.is_empty() {
+        return Err(CoreError::validation("name", "is required"));
+    }
+    if name.chars().count() > limits::CAMPAIGN_NAME_MAX {
+        return Err(CoreError::validation(
+            "name",
+            format!(
+                "is longer than {} characters",
+                limits::CAMPAIGN_NAME_MAX
+            ),
+        ));
+    }
+    Ok(name.to_owned())
+}
+
+fn checked_text(field: &'static str, raw: &str, max: usize) -> CoreResult<String> {
+    if raw.chars().count() > max {
+        return Err(CoreError::validation(
+            field,
+            format!("is longer than {max} characters"),
+        ));
+    }
+    Ok(raw.to_owned())
 }
 
 #[cfg(test)]
