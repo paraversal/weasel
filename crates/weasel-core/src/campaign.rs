@@ -208,6 +208,17 @@ impl CampaignService {
         self.repo.list(query).await
     }
 
+    /// Campaigns with their stats, using one batched stats lookup for the whole page.
+    pub async fn list_summaries(&self, query: &CampaignQuery) -> CoreResult<Page<CampaignSummary>> {
+        let page = self.repo.list(query).await?;
+        let ids: Vec<i64> = page.items.iter().map(|campaign| campaign.id).collect();
+        let mut stats = self.repo.stats_for(&ids).await?;
+        Ok(page.map(|campaign| {
+            let stats = stats.remove(&campaign.id).unwrap_or_default();
+            CampaignSummary { campaign, stats }
+        }))
+    }
+
     pub async fn stats(&self, id: i64) -> CoreResult<CampaignStats> {
         self.repo.stats(id).await
     }

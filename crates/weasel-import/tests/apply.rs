@@ -267,7 +267,7 @@ async fn roster_removal_keeps_send_history_and_a_returnee_is_restored() {
         .await
         .unwrap();
     h.clock.advance(1_000);
-    h.sends.prepare_send(active.id).await.unwrap();
+    h.sends.prepare_send(active.id, None).await.unwrap();
 
     h.clock.advance(1_000);
     let without_alice = h.preview(&source(&[bob()])).await;

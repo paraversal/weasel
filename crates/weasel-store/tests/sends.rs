@@ -118,7 +118,7 @@ async fn prepare_send_copies_before_commit_and_is_not_repeatable() {
 
     let campaign_id = active_campaign(&harness, "Spring").await;
     harness.clock.set(2_000);
-    let prepared = harness.sends.prepare_send(campaign_id).await.unwrap();
+    let prepared = harness.sends.prepare_send(campaign_id, None).await.unwrap();
 
     assert_eq!(prepared.emails.len(), 3);
     assert_eq!(prepared.batch.recipient_count, 3);
@@ -140,7 +140,11 @@ async fn prepare_send_copies_before_commit_and_is_not_repeatable() {
     let prepared_emails: Vec<&str> = prepared.emails.iter().map(String::as_str).collect();
     assert_eq!(record_emails, prepared_emails);
 
-    let second = harness.sends.prepare_send(campaign_id).await.unwrap_err();
+    let second = harness
+        .sends
+        .prepare_send(campaign_id, None)
+        .await
+        .unwrap_err();
     assert!(matches!(second, CoreError::InvalidState(_)));
     assert_eq!(
         harness
@@ -173,13 +177,62 @@ async fn prepare_send_copies_before_commit_and_is_not_repeatable() {
 }
 
 #[tokio::test]
+async fn expected_count_guards_the_reviewed_audience() {
+    let harness = harness().await;
+    create_contact(&harness, "Ada", "Lovelace", "ada@example.com").await;
+    create_contact(&harness, "Bob", "Baker", "bob@example.com").await;
+    let campaign_id = active_campaign(&harness, "Spring").await;
+
+    let err = harness
+        .sends
+        .prepare_send(campaign_id, Some(1))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(
+            &err,
+            CoreError::Conflict(message)
+                if message == "The audience changed since you reviewed it. Review it again."
+        ),
+        "got {err:?}"
+    );
+    assert!(harness.clipboard.writes().is_empty());
+    assert_eq!(
+        harness
+            .sends
+            .list(&SendBatchQuery::default())
+            .await
+            .unwrap()
+            .total,
+        0
+    );
+    let records: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM send_records")
+        .fetch_one(harness.db.store().pool())
+        .await
+        .unwrap();
+    assert_eq!(records, 0);
+
+    let prepared = harness
+        .sends
+        .prepare_send(campaign_id, Some(2))
+        .await
+        .unwrap();
+    assert_eq!(prepared.emails.len(), 2);
+    assert_eq!(harness.clipboard.writes().len(), 1);
+}
+
+#[tokio::test]
 async fn clipboard_failure_records_nothing() {
     let harness = harness().await;
     create_contact(&harness, "Ada", "Lovelace", "ada@example.com").await;
     let campaign_id = active_campaign(&harness, "Spring").await;
 
     harness.clipboard.fail_next();
-    let err = harness.sends.prepare_send(campaign_id).await.unwrap_err();
+    let err = harness
+        .sends
+        .prepare_send(campaign_id, None)
+        .await
+        .unwrap_err();
     assert!(matches!(err, CoreError::Io(_)), "got {err:?}");
 
     assert_eq!(
@@ -199,7 +252,7 @@ async fn clipboard_failure_records_nothing() {
     assert!(harness.clipboard.writes().is_empty());
 
     // The campaign is still sendable afterwards.
-    let prepared = harness.sends.prepare_send(campaign_id).await.unwrap();
+    let prepared = harness.sends.prepare_send(campaign_id, None).await.unwrap();
     assert_eq!(prepared.emails, vec!["ada@example.com".to_owned()]);
 }
 
@@ -218,7 +271,11 @@ async fn only_active_campaigns_can_be_sent() {
         })
         .await
         .unwrap();
-    let err = harness.sends.prepare_send(draft.id).await.unwrap_err();
+    let err = harness
+        .sends
+        .prepare_send(draft.id, None)
+        .await
+        .unwrap_err();
     assert!(
         matches!(err, CoreError::InvalidState(message) if message.contains("active")),
         "draft campaign must be refused"
@@ -231,10 +288,14 @@ async fn only_active_campaigns_can_be_sent() {
         .set_status(active.id, active.version, CampaignStatus::Archived)
         .await
         .unwrap();
-    let err = harness.sends.prepare_send(campaign_id).await.unwrap_err();
+    let err = harness
+        .sends
+        .prepare_send(campaign_id, None)
+        .await
+        .unwrap_err();
     assert!(matches!(err, CoreError::InvalidState(message) if message.contains("active")));
 
-    let missing = harness.sends.prepare_send(999).await.unwrap_err();
+    let missing = harness.sends.prepare_send(999, None).await.unwrap_err();
     assert!(matches!(missing, CoreError::NotFound { .. }));
 }
 
@@ -245,7 +306,7 @@ async fn recopy_returns_the_original_snapshot() {
     create_contact(&harness, "Ada", "Lovelace", "ada@example.com").await;
     let campaign_id = active_campaign(&harness, "Spring").await;
 
-    let prepared = harness.sends.prepare_send(campaign_id).await.unwrap();
+    let prepared = harness.sends.prepare_send(campaign_id, None).await.unwrap();
     harness
         .contacts
         .update(
@@ -283,7 +344,7 @@ async fn deleted_contact_keeps_its_snapshot_in_the_audience() {
     let ada = create_contact(&harness, "Ada", "Lovelace", "ada@example.com").await;
     create_contact(&harness, "Bob", "Baker", "bob@example.com").await;
     let campaign_id = active_campaign(&harness, "Spring").await;
-    harness.sends.prepare_send(campaign_id).await.unwrap();
+    harness.sends.prepare_send(campaign_id, None).await.unwrap();
 
     sqlx::query("DELETE FROM contacts WHERE id = ?")
         .bind(ada.id)
@@ -318,7 +379,7 @@ async fn note_and_search() {
     let harness = harness().await;
     create_contact(&harness, "Ada", "Lovelace", "ada@example.com").await;
     let campaign_id = active_campaign(&harness, "Spring").await;
-    let prepared = harness.sends.prepare_send(campaign_id).await.unwrap();
+    let prepared = harness.sends.prepare_send(campaign_id, None).await.unwrap();
 
     let noted = harness
         .sends
@@ -388,8 +449,8 @@ async fn two_prepares_race_and_exactly_one_wins() {
 
     let service = &harness.sends;
     let (left, right) = tokio::join!(
-        service.prepare_send(campaign_id),
-        service.prepare_send(campaign_id)
+        service.prepare_send(campaign_id, None),
+        service.prepare_send(campaign_id, None)
     );
 
     let successes = [&left, &right]
@@ -423,7 +484,7 @@ async fn campaign_edit_is_audited() {
     let harness = harness().await;
     create_contact(&harness, "Ada", "Lovelace", "ada@example.com").await;
     let campaign_id = active_campaign(&harness, "Spring").await;
-    let prepared = harness.sends.prepare_send(campaign_id).await.unwrap();
+    let prepared = harness.sends.prepare_send(campaign_id, None).await.unwrap();
 
     let events = harness.sends_repo.get(prepared.batch.id).await.unwrap();
     assert_eq!(events.note, "");

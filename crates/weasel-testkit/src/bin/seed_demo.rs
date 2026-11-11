@@ -357,7 +357,7 @@ fn run_main() -> Result<(), String> {
     println!("campaigns: 4 (1 archived)");
 
     for campaign_id in &active[..3] {
-        let prepared = run(services.sends.prepare_send(*campaign_id))?;
+        let prepared = run(services.sends.prepare_send(*campaign_id, None))?;
         println!("send batch: {} recipients", prepared.emails.len());
     }
     if !services.clipboard.writes().is_empty() {

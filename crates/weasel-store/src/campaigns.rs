@@ -3,6 +3,7 @@
 
 use async_trait::async_trait;
 use sqlx::{Executor, QueryBuilder, Row, Sqlite, sqlite::SqliteRow};
+use std::collections::HashMap;
 use weasel_core::{
     CoreError, CoreResult,
     audit::{AuditRecord, actions},
@@ -263,37 +264,101 @@ impl CampaignRepository for SqliteCampaigns {
 
     async fn stats(&self, id: i64) -> CoreResult<CampaignStats> {
         Self::fetch_one(self.store.pool(), id).await?;
+        Ok(self.stats_for(&[id]).await?.remove(&id).unwrap_or_default())
+    }
 
-        let row = sqlx::query(
-            "SELECT \
-             (SELECT COUNT(*) FROM send_records r JOIN send_batches b ON b.id = r.batch_id \
-              WHERE b.campaign_id = ?) AS sent, \
-             (SELECT COUNT(*) FROM contacts c WHERE c.status = 'active' AND NOT EXISTS \
-              (SELECT 1 FROM send_records r JOIN send_batches b ON b.id = r.batch_id \
-               WHERE b.campaign_id = ? AND r.contact_id = c.id)) AS unsent, \
-             (SELECT COUNT(*) FROM contacts c WHERE c.status = 'removed' AND NOT EXISTS \
-              (SELECT 1 FROM send_records r JOIN send_batches b ON b.id = r.batch_id \
-               WHERE b.campaign_id = ? AND r.contact_id = c.id)) AS removed, \
-             (SELECT MAX(created_at) FROM send_batches WHERE campaign_id = ?) AS last_batch_at",
+    async fn stats_for(&self, ids: &[i64]) -> CoreResult<HashMap<i64, CampaignStats>> {
+        if ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let totals = sqlx::query(
+            "SELECT status, COUNT(*) AS n FROM contacts \
+             WHERE status IN ('active', 'removed') GROUP BY status",
         )
-        .bind(id)
-        .bind(id)
-        .bind(id)
-        .bind(id)
-        .fetch_one(self.store.pool())
+        .fetch_all(self.store.pool())
         .await
         .map_err(StoreError::from)?;
+        let mut active = 0;
+        let mut removed = 0;
+        for row in &totals {
+            let status: String = row.try_get("status").map_err(StoreError::from)?;
+            let n = count(row, "n")?;
+            match status.as_str() {
+                "active" => active = n,
+                "removed" => removed = n,
+                _ => {}
+            }
+        }
 
-        let sent = count(&row, "sent")?;
-        let unsent = count(&row, "unsent")?;
-        let removed = count(&row, "removed")?;
-        Ok(CampaignStats {
-            sent,
-            unsent,
-            removed,
-            total: sent + unsent,
-            last_batch_at: row.try_get("last_batch_at").map_err(StoreError::from)?,
-        })
+        let mut stats: HashMap<i64, CampaignStats> = ids
+            .iter()
+            .map(|id| {
+                (
+                    *id,
+                    CampaignStats {
+                        unsent: active,
+                        removed,
+                        total: active,
+                        ..CampaignStats::default()
+                    },
+                )
+            })
+            .collect();
+
+        let mut batches = QueryBuilder::<Sqlite>::new(
+            "SELECT b.campaign_id AS campaign_id, COUNT(r.id) AS sent, \
+             MAX(b.created_at) AS last_batch_at \
+             FROM send_batches b LEFT JOIN send_records r ON r.batch_id = b.id \
+             WHERE b.campaign_id IN (",
+        );
+        push_ids(&mut batches, ids);
+        batches.push(") GROUP BY b.campaign_id");
+        let batches = batches
+            .build()
+            .fetch_all(self.store.pool())
+            .await
+            .map_err(StoreError::from)?;
+        for row in &batches {
+            let campaign_id: i64 = row.try_get("campaign_id").map_err(StoreError::from)?;
+            if let Some(entry) = stats.get_mut(&campaign_id) {
+                entry.sent = count(row, "sent")?;
+                entry.last_batch_at = row.try_get("last_batch_at").map_err(StoreError::from)?;
+            }
+        }
+
+        let mut sent_contacts = QueryBuilder::<Sqlite>::new(
+            "SELECT b.campaign_id AS campaign_id, c.status AS status, \
+             COUNT(DISTINCT r.contact_id) AS n \
+             FROM send_records r \
+             JOIN send_batches b ON b.id = r.batch_id \
+             JOIN contacts c ON c.id = r.contact_id \
+             WHERE b.campaign_id IN (",
+        );
+        push_ids(&mut sent_contacts, ids);
+        sent_contacts.push(") GROUP BY b.campaign_id, c.status");
+        let sent_contacts = sent_contacts
+            .build()
+            .fetch_all(self.store.pool())
+            .await
+            .map_err(StoreError::from)?;
+        for row in &sent_contacts {
+            let campaign_id: i64 = row.try_get("campaign_id").map_err(StoreError::from)?;
+            let status: String = row.try_get("status").map_err(StoreError::from)?;
+            let n = count(row, "n")?;
+            if let Some(entry) = stats.get_mut(&campaign_id) {
+                match status.as_str() {
+                    "active" => entry.unsent = entry.unsent.saturating_sub(n),
+                    "removed" => entry.removed = entry.removed.saturating_sub(n),
+                    _ => {}
+                }
+            }
+        }
+
+        for entry in stats.values_mut() {
+            entry.total = entry.sent + entry.unsent;
+        }
+        Ok(stats)
     }
 
     async fn audience(
@@ -434,6 +499,15 @@ async fn stale_version(
             "This campaign was changed elsewhere. Reload and try again (expected version \
              {expected_version})."
         ))
+    }
+}
+
+fn push_ids(query: &mut QueryBuilder<Sqlite>, ids: &[i64]) {
+    for (index, id) in ids.iter().enumerate() {
+        if index > 0 {
+            query.push(", ");
+        }
+        query.push_bind(*id);
     }
 }
 

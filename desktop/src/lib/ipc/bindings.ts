@@ -22,6 +22,15 @@ export const commands = {
 	 *  when the database is broken.
 	 */
 	appOpenDataDir: () => typedError<null, AppError_Serialize>(__TAURI_INVOKE("app_open_data_dir")),
+	campaignsList: (request: CampaignListRequest_Deserialize) => typedError<PageDto<CampaignSummaryDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("campaigns_list", { request })),
+	campaignsGet: (request: CampaignGetRequest) => typedError<CampaignDto, AppError_Serialize>(__TAURI_INVOKE("campaigns_get", { request })),
+	campaignsCreate: (request: CampaignCreateRequest_Deserialize) => typedError<CampaignDto, AppError_Serialize>(__TAURI_INVOKE("campaigns_create", { request })),
+	campaignsUpdate: (request: CampaignUpdateRequest_Deserialize) => typedError<CampaignDto, AppError_Serialize>(__TAURI_INVOKE("campaigns_update", { request })),
+	campaignsSetStatus: (request: CampaignStatusRequest) => typedError<CampaignDto, AppError_Serialize>(__TAURI_INVOKE("campaigns_set_status", { request })),
+	campaignsDelete: (request: CampaignDeleteRequest) => typedError<null, AppError_Serialize>(__TAURI_INVOKE("campaigns_delete", { request })),
+	campaignsStats: (request: CampaignStatsRequest) => typedError<CampaignStatsDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("campaigns_stats", { request })),
+	campaignsAudience: (request: CampaignAudienceRequest_Deserialize) => typedError<PageDto<AudienceMemberDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("campaigns_audience", { request })),
+	campaignsPrepareSend: (request: CampaignPrepareSendRequest_Deserialize) => typedError<PreparedSendDto, AppError_Serialize>(__TAURI_INVOKE("campaigns_prepare_send", { request })),
 	contactsList: (request: ContactListRequest_Deserialize) => typedError<PageDto<ContactDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("contacts_list", { request })),
 	contactsGet: (request: ContactGetRequest) => typedError<ContactDetailDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("contacts_get", { request })),
 	contactsCreate: (request: ContactCreateRequest_Deserialize) => typedError<ContactDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("contacts_create", { request })),
@@ -29,6 +38,11 @@ export const commands = {
 	contactsSetStatus: (request: ContactStatusRequest) => typedError<ContactDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("contacts_set_status", { request })),
 	contactsDelete: (request: ContactDeleteRequest) => typedError<null, AppError_Serialize>(__TAURI_INVOKE("contacts_delete", { request })),
 	contactsStats: () => typedError<ContactStatsDto, AppError_Serialize>(__TAURI_INVOKE("contacts_stats")),
+	sendBatchesList: (request: SendBatchListRequest_Deserialize) => typedError<PageDto<SendBatchDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("send_batches_list", { request })),
+	sendBatchesGet: (request: SendBatchGetRequest) => typedError<SendBatchDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("send_batches_get", { request })),
+	sendBatchesRecipients: (request: SendBatchRecipientsRequest_Deserialize) => typedError<PageDto<SendRecordDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("send_batches_recipients", { request })),
+	sendBatchesRecopy: (request: SendBatchGetRequest) => typedError<PreparedSendDto, AppError_Serialize>(__TAURI_INVOKE("send_batches_recopy", { request })),
+	sendBatchesSetNote: (request: SendBatchSetNoteRequest) => typedError<SendBatchDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("send_batches_set_note", { request })),
 	settingsGetAll: () => typedError<SettingsDto, AppError_Serialize>(__TAURI_INVOKE("settings_get_all")),
 	settingsUpdate: (request: SettingsUpdateRequest_Deserialize) => typedError<SettingsDto, AppError_Serialize>(__TAURI_INVOKE("settings_update", { request })),
 };
@@ -119,6 +133,30 @@ export type AppInfoDto = {
 	dataDir: string,
 };
 
+export type AudienceFilterDto = "sent" | "unsent" | "all";
+
+export type AudienceMemberDto = AudienceMemberDto_Serialize | AudienceMemberDto_Deserialize;
+
+export type AudienceMemberDto_Deserialize = {
+	contactId?: number | null,
+	firstName: string,
+	lastName: string,
+	email: string,
+	contactStatus?: ContactStatusDto | null,
+	batchId?: number | null,
+	sentAt?: number | null,
+};
+
+export type AudienceMemberDto_Serialize = {
+	contactId: number | null,
+	firstName: string,
+	lastName: string,
+	email: string,
+	contactStatus: ContactStatusDto | null,
+	batchId: number | null,
+	sentAt: number | null,
+};
+
 export type AuditEventDto = AuditEventDto_Serialize | AuditEventDto_Deserialize;
 
 export type AuditEventDto_Deserialize = {
@@ -151,11 +189,156 @@ export type BatchCountDto = {
 	count: number,
 };
 
+export type CampaignAudienceRequest = CampaignAudienceRequest_Serialize | CampaignAudienceRequest_Deserialize;
+
+export type CampaignAudienceRequest_Deserialize = {
+	campaignId: number,
+	filter: AudienceFilterDto,
+	search?: string | null,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+export type CampaignAudienceRequest_Serialize = {
+	campaignId: number,
+	filter: AudienceFilterDto,
+	search: string | null,
+	limit: number | null,
+	offset: number | null,
+};
+
+export type CampaignCreateRequest = CampaignCreateRequest_Serialize | CampaignCreateRequest_Deserialize;
+
+export type CampaignCreateRequest_Deserialize = {
+	name: string,
+	description?: string | null,
+	subject?: string | null,
+	body?: string | null,
+};
+
+export type CampaignCreateRequest_Serialize = {
+	name: string,
+	description: string | null,
+	subject: string | null,
+	body: string | null,
+};
+
+export type CampaignDeleteRequest = {
+	id: number,
+	version: number,
+};
+
+export type CampaignDto = {
+	id: number,
+	name: string,
+	description: string,
+	subject: string,
+	body: string,
+	status: CampaignStatusDto,
+	createdAt: number,
+	updatedAt: number,
+	version: number,
+};
+
+export type CampaignGetRequest = {
+	id: number,
+};
+
+export type CampaignListRequest = CampaignListRequest_Serialize | CampaignListRequest_Deserialize;
+
+export type CampaignListRequest_Deserialize = {
+	status?: CampaignStatusDto | null,
+	search?: string | null,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+export type CampaignListRequest_Serialize = {
+	status: CampaignStatusDto | null,
+	search: string | null,
+	limit: number | null,
+	offset: number | null,
+};
+
+export type CampaignPrepareSendRequest = CampaignPrepareSendRequest_Serialize | CampaignPrepareSendRequest_Deserialize;
+
+export type CampaignPrepareSendRequest_Deserialize = {
+	campaignId: number,
+	expectedCount?: number | null,
+};
+
+export type CampaignPrepareSendRequest_Serialize = {
+	campaignId: number,
+	expectedCount: number | null,
+};
+
 export type CampaignReceiptDto = {
 	campaignId: number,
 	campaignName: string,
 	batchId: number,
 	sentAt: number,
+};
+
+export type CampaignStatsDto = CampaignStatsDto_Serialize | CampaignStatsDto_Deserialize;
+
+export type CampaignStatsDto_Deserialize = {
+	sent: number,
+	unsent: number,
+	removed: number,
+	total: number,
+	lastBatchAt?: number | null,
+};
+
+export type CampaignStatsDto_Serialize = {
+	sent: number,
+	unsent: number,
+	removed: number,
+	total: number,
+	lastBatchAt: number | null,
+};
+
+export type CampaignStatsRequest = {
+	id: number,
+};
+
+export type CampaignStatusDto = "draft" | "active" | "archived";
+
+export type CampaignStatusRequest = {
+	id: number,
+	version: number,
+	status: CampaignStatusDto,
+};
+
+export type CampaignSummaryDto = CampaignSummaryDto_Serialize | CampaignSummaryDto_Deserialize;
+
+export type CampaignSummaryDto_Deserialize = {
+	campaign: CampaignDto,
+	stats: CampaignStatsDto_Deserialize,
+};
+
+export type CampaignSummaryDto_Serialize = {
+	campaign: CampaignDto,
+	stats: CampaignStatsDto_Serialize,
+};
+
+export type CampaignUpdateRequest = CampaignUpdateRequest_Serialize | CampaignUpdateRequest_Deserialize;
+
+export type CampaignUpdateRequest_Deserialize = {
+	id: number,
+	version: number,
+	name?: string | null,
+	description?: string | null,
+	subject?: string | null,
+	body?: string | null,
+};
+
+export type CampaignUpdateRequest_Serialize = {
+	id: number,
+	version: number,
+	name: string | null,
+	description: string | null,
+	subject: string | null,
+	body: string | null,
 };
 
 export type ContactCreateRequest = ContactCreateRequest_Serialize | ContactCreateRequest_Deserialize;
@@ -348,6 +531,102 @@ export type PageDto<T> = {
 	offset: number,
 	limit: number,
 };
+
+/**  The addresses copied for a send, so the UI can show and re-copy them. */
+export type PreparedSendDto = {
+	batchId: number,
+	recipientCount: number,
+	emails: string[],
+};
+
+export type SendBatchDto = SendBatchDto_Serialize | SendBatchDto_Deserialize;
+
+export type SendBatchDto_Deserialize = {
+	id: number,
+	campaignId: number,
+	campaignName: string,
+	createdAt: number,
+	recipientCount: number,
+	note: string,
+	copiedAt?: number | null,
+};
+
+export type SendBatchDto_Serialize = {
+	id: number,
+	campaignId: number,
+	campaignName: string,
+	createdAt: number,
+	recipientCount: number,
+	note: string,
+	copiedAt: number | null,
+};
+
+export type SendBatchGetRequest = {
+	id: number,
+};
+
+export type SendBatchListRequest = SendBatchListRequest_Serialize | SendBatchListRequest_Deserialize;
+
+export type SendBatchListRequest_Deserialize = {
+	campaignId?: number | null,
+	search?: string | null,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+export type SendBatchListRequest_Serialize = {
+	campaignId: number | null,
+	search: string | null,
+	limit: number | null,
+	offset: number | null,
+};
+
+export type SendBatchRecipientsRequest = SendBatchRecipientsRequest_Serialize | SendBatchRecipientsRequest_Deserialize;
+
+export type SendBatchRecipientsRequest_Deserialize = {
+	id: number,
+	search?: string | null,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+export type SendBatchRecipientsRequest_Serialize = {
+	id: number,
+	search: string | null,
+	limit: number | null,
+	offset: number | null,
+};
+
+export type SendBatchSetNoteRequest = {
+	id: number,
+	note: string,
+};
+
+export type SendRecordDto = SendRecordDto_Serialize | SendRecordDto_Deserialize;
+
+export type SendRecordDto_Deserialize = {
+	id: number,
+	batchId: number,
+	contactId?: number | null,
+	email: string,
+	firstName: string,
+	lastName: string,
+	status: SendRecordStatusDto,
+	createdAt: number,
+};
+
+export type SendRecordDto_Serialize = {
+	id: number,
+	batchId: number,
+	contactId: number | null,
+	email: string,
+	firstName: string,
+	lastName: string,
+	status: SendRecordStatusDto,
+	createdAt: number,
+};
+
+export type SendRecordStatusDto = "created" | "copied" | "sent" | "failed" | "skipped";
 
 export type SettingsDto = {
 	theme: ThemeDto,

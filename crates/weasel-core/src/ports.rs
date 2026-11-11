@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use async_trait::async_trait;
@@ -104,6 +105,9 @@ pub trait CampaignRepository: Send + Sync {
     ) -> CoreResult<Campaign>;
     async fn delete(&self, id: i64, expected_version: i64, now_ms: i64) -> CoreResult<()>;
     async fn stats(&self, id: i64) -> CoreResult<CampaignStats>;
+    /// Stats for a page of campaigns in a fixed number of queries. Unknown ids map to
+    /// zeroed stats; callers only pass ids they just read.
+    async fn stats_for(&self, ids: &[i64]) -> CoreResult<HashMap<i64, CampaignStats>>;
     async fn audience(
         &self,
         id: i64,

@@ -86,11 +86,26 @@ impl SendService {
         }
     }
 
-    pub async fn prepare_send(&self, campaign_id: i64) -> CoreResult<PreparedSend> {
+    /// Copies the current unsent audience. When `expected_count` is set, it must match
+    /// the audience the user reviewed; otherwise nothing is copied or recorded.
+    pub async fn prepare_send(
+        &self,
+        campaign_id: i64,
+        expected_count: Option<u64>,
+    ) -> CoreResult<PreparedSend> {
         let pending = self
             .repo
             .begin_batch(campaign_id, self.clock.now_ms())
             .await?;
+        if let Some(expected) = expected_count {
+            let actual = u64::try_from(pending.emails().len()).unwrap_or(u64::MAX);
+            if actual != expected {
+                drop(pending);
+                return Err(CoreError::Conflict(
+                    "The audience changed since you reviewed it. Review it again.".to_owned(),
+                ));
+            }
+        }
         if let Err(err) = self
             .clipboard
             .write_text(format_recipients(pending.emails()))
@@ -152,6 +167,15 @@ impl SendService {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+
+    use async_trait::async_trait;
+
+    use crate::ports::{PendingSendBatch, SendRepository};
+
     use super::*;
 
     #[test]
@@ -160,5 +184,162 @@ mod tests {
         assert_eq!(format_recipients(&emails), "a@x.edu b@x.edu");
         assert_eq!(format_recipients(&[]), "");
         assert_eq!(RECIPIENT_SEPARATOR, " ");
+    }
+
+    struct FixedTime;
+
+    impl Clock for FixedTime {
+        fn now_ms(&self) -> i64 {
+            7
+        }
+    }
+
+    #[derive(Default)]
+    struct RecordingClipboard {
+        writes: std::sync::Mutex<Vec<String>>,
+    }
+
+    #[async_trait]
+    impl Clipboard for RecordingClipboard {
+        async fn write_text(&self, text: String) -> CoreResult<()> {
+            self.writes.lock().unwrap().push(text);
+            Ok(())
+        }
+    }
+
+    struct Pending {
+        batch: SendBatch,
+        emails: Vec<String>,
+        committed: Arc<AtomicBool>,
+    }
+
+    #[async_trait]
+    impl PendingSendBatch for Pending {
+        fn batch(&self) -> &SendBatch {
+            &self.batch
+        }
+
+        fn emails(&self) -> &[String] {
+            &self.emails
+        }
+
+        async fn commit(self: Box<Self>) -> CoreResult<()> {
+            self.committed.store(true, Ordering::SeqCst);
+            Ok(())
+        }
+    }
+
+    struct FakeSends {
+        emails: Vec<String>,
+        committed: Arc<AtomicBool>,
+    }
+
+    #[async_trait]
+    impl SendRepository for FakeSends {
+        async fn begin_batch(
+            &self,
+            campaign_id: i64,
+            now_ms: i64,
+        ) -> CoreResult<Box<dyn PendingSendBatch>> {
+            Ok(Box::new(Pending {
+                batch: SendBatch {
+                    id: 1,
+                    campaign_id,
+                    campaign_name: "Spring".to_owned(),
+                    created_at: now_ms,
+                    recipient_count: u64::try_from(self.emails.len()).unwrap_or_default(),
+                    note: String::new(),
+                    copied_at: Some(now_ms),
+                },
+                emails: self.emails.clone(),
+                committed: self.committed.clone(),
+            }))
+        }
+
+        async fn list(&self, _query: &SendBatchQuery) -> CoreResult<Page<SendBatch>> {
+            unreachable!("not used by these tests")
+        }
+
+        async fn get(&self, _id: i64) -> CoreResult<SendBatch> {
+            unreachable!("not used by these tests")
+        }
+
+        async fn recipients(
+            &self,
+            _id: i64,
+            _search: Option<&str>,
+            _page: &PageRequest,
+        ) -> CoreResult<Page<SendRecord>> {
+            unreachable!("not used by these tests")
+        }
+
+        async fn emails(&self, _id: i64) -> CoreResult<Vec<String>> {
+            unreachable!("not used by these tests")
+        }
+
+        async fn mark_recopied(&self, _id: i64, _now_ms: i64) -> CoreResult<SendBatch> {
+            unreachable!("not used by these tests")
+        }
+
+        async fn set_note(&self, _id: i64, _note: String, _now_ms: i64) -> CoreResult<SendBatch> {
+            unreachable!("not used by these tests")
+        }
+    }
+
+    fn service(
+        emails: &[&str],
+        committed: Arc<AtomicBool>,
+        clipboard: Arc<RecordingClipboard>,
+    ) -> SendService {
+        SendService::new(
+            Arc::new(FakeSends {
+                emails: emails.iter().map(|email| (*email).to_owned()).collect(),
+                committed,
+            }),
+            clipboard,
+            Arc::new(FixedTime),
+        )
+    }
+
+    #[tokio::test]
+    async fn expected_count_matches_and_commits() {
+        let committed = Arc::new(AtomicBool::new(false));
+        let clipboard = Arc::new(RecordingClipboard::default());
+        let service = service(
+            &["a@x.edu", "b@x.edu"],
+            committed.clone(),
+            clipboard.clone(),
+        );
+
+        let prepared = service.prepare_send(1, Some(2)).await.unwrap();
+        assert_eq!(
+            prepared.emails,
+            vec!["a@x.edu".to_owned(), "b@x.edu".to_owned()]
+        );
+        assert!(committed.load(Ordering::SeqCst));
+        assert_eq!(
+            clipboard.writes.lock().unwrap().as_slice(),
+            ["a@x.edu b@x.edu"]
+        );
+    }
+
+    #[tokio::test]
+    async fn expected_count_mismatch_copies_nothing() {
+        let committed = Arc::new(AtomicBool::new(false));
+        let clipboard = Arc::new(RecordingClipboard::default());
+        let service = service(
+            &["a@x.edu", "b@x.edu"],
+            committed.clone(),
+            clipboard.clone(),
+        );
+
+        let err = service.prepare_send(1, Some(1)).await.unwrap_err();
+        assert!(matches!(
+            &err,
+            CoreError::Conflict(message)
+                if message == "The audience changed since you reviewed it. Review it again."
+        ));
+        assert!(!committed.load(Ordering::SeqCst));
+        assert!(clipboard.writes.lock().unwrap().is_empty());
     }
 }

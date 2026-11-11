@@ -7,8 +7,10 @@ use weasel_core::FeatureDescriptor;
 
 pub mod activity;
 pub mod app;
+pub mod campaigns;
 pub mod contacts;
 pub mod dto;
+pub mod send_batches;
 pub mod settings;
 #[cfg(test)]
 pub mod testing;
@@ -20,7 +22,9 @@ pub fn feature_descriptors() -> Vec<FeatureDescriptor> {
     vec![
         activity::descriptor(),
         app::descriptor(),
+        campaigns::descriptor(),
         contacts::descriptor(),
+        send_batches::descriptor(),
         settings::descriptor(),
         // @gen:descriptors
     ]
@@ -39,6 +43,15 @@ pub fn builder() -> tauri_specta::Builder<tauri::Wry> {
             app::app_health,
             app::app_features,
             app::app_open_data_dir,
+            campaigns::campaigns_list,
+            campaigns::campaigns_get,
+            campaigns::campaigns_create,
+            campaigns::campaigns_update,
+            campaigns::campaigns_set_status,
+            campaigns::campaigns_delete,
+            campaigns::campaigns_stats,
+            campaigns::campaigns_audience,
+            campaigns::campaigns_prepare_send,
             contacts::contacts_list,
             contacts::contacts_get,
             contacts::contacts_create,
@@ -46,6 +59,11 @@ pub fn builder() -> tauri_specta::Builder<tauri::Wry> {
             contacts::contacts_set_status,
             contacts::contacts_delete,
             contacts::contacts_stats,
+            send_batches::send_batches_list,
+            send_batches::send_batches_get,
+            send_batches::send_batches_recipients,
+            send_batches::send_batches_recopy,
+            send_batches::send_batches_set_note,
             settings::settings_get_all,
             settings::settings_update,
             // @gen:commands

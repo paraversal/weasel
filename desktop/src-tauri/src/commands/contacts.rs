@@ -616,7 +616,7 @@ mod tests {
         harness
             .services
             .sends
-            .prepare_send(campaign.id)
+            .prepare_send(campaign.id, None)
             .await
             .unwrap();
 

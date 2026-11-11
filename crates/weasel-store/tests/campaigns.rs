@@ -12,6 +12,7 @@ use weasel_core::{
     contact::{Contact, ContactPatch, ContactService, NewContact},
     enums::{CampaignStatus, ContactStatus},
     identity::NameIdentity,
+    ports::CampaignRepository,
     query::PageRequest,
     send::{SendService, format_recipients},
 };
@@ -24,6 +25,7 @@ use weasel_testkit::{
 struct Harness {
     db: TempDb,
     campaigns: CampaignService,
+    campaigns_repo: Arc<SqliteCampaigns>,
     contacts: ContactService,
     sends: SendService,
     clipboard: Arc<FakeClipboard>,
@@ -37,12 +39,11 @@ async fn harness() -> Harness {
     let contacts_repo = SqliteContacts::new(store.clone());
     let sends_repo = SqliteSends::new(store.clone());
     let clipboard = Arc::new(FakeClipboard::new());
+    let campaigns_repo = Arc::new(SqliteCampaigns::new(store.clone()));
     Harness {
         db,
-        campaigns: CampaignService::new(
-            Arc::new(SqliteCampaigns::new(store.clone())),
-            clock.clone(),
-        ),
+        campaigns: CampaignService::new(campaigns_repo.clone(), clock.clone()),
+        campaigns_repo,
         contacts: ContactService::new(
             Arc::new(contacts_repo),
             clock.clone(),
@@ -230,7 +231,7 @@ async fn delete_is_refused_with_batches() {
 
     create_contact(&harness, "Ada", "Lovelace", "ada@example.com").await;
     let used = activate(&harness, "Used").await;
-    harness.sends.prepare_send(used.id).await.unwrap();
+    harness.sends.prepare_send(used.id, None).await.unwrap();
 
     let err = harness
         .campaigns
@@ -259,7 +260,7 @@ async fn stats_and_audience_on_a_mixed_fixture() {
 
     let campaign = activate(&harness, "Spring").await;
     // Audience at copy time: Alice, Bob, Eve (Cara removed, Dan/Fay archived).
-    let prepared = harness.sends.prepare_send(campaign.id).await.unwrap();
+    let prepared = harness.sends.prepare_send(campaign.id, None).await.unwrap();
     assert_eq!(prepared.emails.len(), 3);
     assert_eq!(
         harness.clipboard.writes().last().unwrap(),
@@ -392,4 +393,57 @@ async fn stats_and_audience_on_a_mixed_fixture() {
     assert_eq!(listed.items[0].id, campaign.id);
     assert_fk_clean(&harness.db.store()).await;
     assert_integrity(&harness.db.store()).await;
+}
+
+#[tokio::test]
+async fn batched_stats_match_single_campaign_stats() {
+    let harness = harness().await;
+    create_contact(&harness, "Ada", "Lovelace", "ada@example.com").await;
+    create_contact(&harness, "Bob", "Baker", "bob@example.com").await;
+    let removed = create_contact(&harness, "Rex", "Removed", "rex@example.com").await;
+    set_status(&harness, removed, ContactStatus::Removed).await;
+
+    let used = activate(&harness, "Used").await;
+    let idle = activate(&harness, "Idle").await;
+    harness.sends.prepare_send(used.id, None).await.unwrap();
+
+    let single = harness.campaigns.stats(used.id).await.unwrap();
+    assert_eq!(single.sent, 2);
+    assert_eq!(single.unsent, 0);
+    assert_eq!(single.removed, 1);
+
+    let batched = harness
+        .campaigns_repo
+        .stats_for(&[used.id, idle.id])
+        .await
+        .unwrap();
+    assert_eq!(batched.get(&used.id), Some(&single));
+    assert_eq!(
+        batched.get(&idle.id),
+        Some(&harness.campaigns.stats(idle.id).await.unwrap()),
+        "a campaign without sends has the whole active list unsent"
+    );
+    assert!(
+        harness
+            .campaigns_repo
+            .stats_for(&[])
+            .await
+            .unwrap()
+            .is_empty()
+    );
+
+    let summaries = harness
+        .campaigns
+        .list_summaries(&CampaignQuery {
+            page: PageRequest::new(10, 0),
+            ..CampaignQuery::default()
+        })
+        .await
+        .unwrap();
+    let used_summary = summaries
+        .items
+        .iter()
+        .find(|summary| summary.campaign.id == used.id)
+        .unwrap();
+    assert_eq!(used_summary.stats, single);
 }
