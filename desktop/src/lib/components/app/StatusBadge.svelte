@@ -16,4 +16,6 @@
 	const style = $derived(styles[status] ?? { label: status, variant: 'outline' as BadgeVariant });
 </script>
 
-<Badge variant={style.variant}>{style.label}</Badge>
+{#key status}
+	<Badge variant={style.variant} class="animate-pop">{style.label}</Badge>
+{/key}

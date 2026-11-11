@@ -383,4 +383,5 @@ phases 6–7.
 | 2026-11-11 | M5 | Dashboard stats and quick actions; ADR 0007; notes in 05/06/09/README; unused primitives removed (§8.12) |
 | 2026-11-11 | Smoke feedback | Owner: import batch not shown and no sort UI on Freshies. Added an Import column (links to the import, "Added by hand" otherwise), an import filter (`?import=`) and sortable Name/Email/Added headers (`?sort=`) |
 | 2026-11-11 | Smoke feedback | Owner: email sorts one way only; sortable headers don't look clickable. Added `ContactSort::{AddedAsc, EmailDesc}` (core, store, DTO, bindings; store test extended) and button-styled headers with a ↕ hint. First Rust change in 08-exec |
+| 2026-11-11 | Owner request | Motion pass: page/step transitions, sliding nav highlight, staggered rows, FLIP reorder on Freshies sort, count-up stats, growing progress bars, popping badges, canvas confetti on send/re-copy/import/create/add. All off under `prefers-reduced-motion` (`utils/motion.ts`, base-layer CSS rule) |
 | 2026-11-11 | §7 | `pnpm verify` green. **Manual smoke not run by the executing agent**: it could not see the Tauri window. 09 UI items stay unticked until the owner runs §7 |

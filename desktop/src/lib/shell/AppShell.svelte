@@ -2,7 +2,9 @@
 	/* Palette targets are runtime strings; resolvePath applies the app base for us. */
 	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 
+	import { enter } from '$lib/utils/motion';
 	import { resolvePath } from '$lib/utils/paths';
 	import { ShortcutMatcher, detectPlatform, type ShortcutBinding } from '$lib/utils/shortcuts';
 
@@ -61,7 +63,12 @@
 		<main class="min-h-0 flex-1 overflow-auto">
 			<div class="mx-auto h-full max-w-6xl p-4">
 				<ErrorBoundary>
-					{@render children()}
+					<!-- Re-enter on a new screen, not on every filter or page change. -->
+					{#key page.url.pathname}
+						<div in:enter>
+							{@render children()}
+						</div>
+					{/key}
 				</ErrorBoundary>
 			</div>
 		</main>

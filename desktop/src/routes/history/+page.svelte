@@ -68,8 +68,12 @@
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
-				{#each list.data?.items ?? [] as batch (batch.id)}
-					<Table.Row class="cursor-pointer" onclick={() => go(`/history/${batch.id}`)}>
+				{#each list.data?.items ?? [] as batch, index (batch.id)}
+					<Table.Row
+						class="stagger animate-row-in cursor-pointer"
+						style="--i: {index}"
+						onclick={() => go(`/history/${batch.id}`)}
+					>
 						<Table.Cell>
 							<a href={href(`/history/${batch.id}`)} class="hover:underline">
 								{formatDateTime(batch.createdAt)}

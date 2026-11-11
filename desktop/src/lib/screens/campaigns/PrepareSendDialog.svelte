@@ -8,6 +8,7 @@
 	import { call, isIpcError } from '$lib/ipc/client';
 	import { campaignQueries } from '$lib/ipc/queries';
 	import { toast } from '$lib/stores/toasts.svelte';
+	import { confetti } from '$lib/utils/confetti';
 	import { fullName, plural } from '$lib/utils/format';
 	import { go } from '$lib/utils/paths';
 
@@ -47,6 +48,7 @@
 				commands.campaignsPrepareSend({ campaignId: campaign.id, expectedCount: unsent })
 			);
 			open = false;
+			confetti({ count: 120 + Math.min(result.recipientCount, 200), power: 16 });
 			toast.success(`Copied ${plural(result.recipientCount, 'address', 'addresses')}`, {
 				action: { label: 'View batch', onClick: () => void go(`/history/${result.batchId}`) }
 			});

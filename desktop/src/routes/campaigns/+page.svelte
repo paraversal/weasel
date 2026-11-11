@@ -89,8 +89,12 @@
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
-				{#each list.data?.items ?? [] as { campaign, stats } (campaign.id)}
-					<Table.Row class="cursor-pointer" onclick={() => go(`/campaigns/${campaign.id}`)}>
+				{#each list.data?.items ?? [] as { campaign, stats }, index (campaign.id)}
+					<Table.Row
+						class="stagger animate-row-in cursor-pointer"
+						style="--i: {index}"
+						onclick={() => go(`/campaigns/${campaign.id}`)}
+					>
 						<Table.Cell class="font-medium">
 							<a href={href(`/campaigns/${campaign.id}`)} class="hover:underline">
 								{campaign.name}

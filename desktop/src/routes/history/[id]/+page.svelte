@@ -16,6 +16,7 @@
 	import { call, fieldError, isIpcError } from '$lib/ipc/client';
 	import { sendBatchQueries } from '$lib/ipc/queries';
 	import { toast } from '$lib/stores/toasts.svelte';
+	import { confetti } from '$lib/utils/confetti';
 	import { formatDateTime, plural } from '$lib/utils/format';
 	import { PAGE_SIZE, listHref, offsetFor, pageParam, param } from '$lib/utils/list-params';
 	import { go, href } from '$lib/utils/paths';
@@ -34,6 +35,7 @@
 	let noteError = $state<unknown>(null);
 	let savingNote = $state(false);
 	let copying = $state(false);
+	let copyButton = $state<HTMLElement | null>(null);
 
 	$effect(() => {
 		const current = batch.data?.note;
@@ -47,6 +49,7 @@
 		copying = true;
 		try {
 			const result = await call(commands.sendBatchesRecopy({ id }));
+			confetti({ from: copyButton ?? undefined, count: 60, spread: 90, power: 10 });
 			toast.success(`Copied ${plural(result.recipientCount, 'address', 'addresses')} again`);
 		} catch (err) {
 			toast.ipcError(err);
@@ -95,7 +98,9 @@
 					{formatDateTime(batch.data.createdAt)} · {plural(batch.data.recipientCount, 'recipient')}
 				</p>
 			</div>
-			<Button onclick={copyAgain} disabled={copying}><CopyIcon />Copy again</Button>
+			<Button bind:ref={copyButton} onclick={copyAgain} disabled={copying}>
+				<CopyIcon class={copying ? 'animate-wiggle' : ''} />Copy again
+			</Button>
 		</div>
 
 		<Section title="Note">
@@ -127,8 +132,8 @@
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
-				{#each recipients.data?.items ?? [] as record (record.id)}
-					<Table.Row>
+				{#each recipients.data?.items ?? [] as record, index (record.id)}
+					<Table.Row class="stagger animate-row-in" style="--i: {index}">
 						<Table.Cell class="font-medium">
 							{#if record.contactId}
 								<a href={href(`/freshies/${record.contactId}`)} class="hover:underline">

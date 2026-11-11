@@ -6,6 +6,7 @@
 	import { call } from '$lib/ipc/client';
 	import { toast } from '$lib/stores/toasts.svelte';
 	import { fullName } from '$lib/utils/format';
+	import { confetti } from '$lib/utils/confetti';
 	import { go } from '$lib/utils/paths';
 
 	import ContactFields, { type ContactValues } from './ContactFields.svelte';
@@ -33,6 +34,7 @@
 				commands.contactsCreate({ ...values, notes: values.notes.trim() || null })
 			);
 			open = false;
+			confetti({ count: 50, spread: 100, power: 9 });
 			toast.success(`Added ${fullName(contact)}`);
 			await go(`/freshies/${contact.id}`);
 		} catch (err) {

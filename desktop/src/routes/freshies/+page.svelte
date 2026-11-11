@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { createQuery, keepPreviousData } from '@tanstack/svelte-query';
+	import { flip } from 'svelte/animate';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 
 	import EmptyState from '$lib/components/app/EmptyState.svelte';
@@ -15,6 +16,7 @@
 	import { contactQueries, importQueries } from '$lib/ipc/queries';
 	import AddFreshieDialog from '$lib/screens/freshies/AddFreshieDialog.svelte';
 	import { formatDate } from '$lib/utils/format';
+	import { flipParams } from '$lib/utils/motion';
 	import {
 		PAGE_SIZE,
 		intParam,
@@ -158,8 +160,13 @@
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
-				{#each list.data?.items ?? [] as contact (contact.id)}
-					<Table.Row class="cursor-pointer" onclick={() => go(`/freshies/${contact.id}`)}>
+				{#each list.data?.items ?? [] as contact, index (contact.id)}
+					<tr
+						animate:flip={flipParams()}
+						class="stagger animate-row-in cursor-pointer border-b transition-colors hover:bg-muted/50"
+						style:--i={index}
+						onclick={() => go(`/freshies/${contact.id}`)}
+					>
 						<Table.Cell class="font-medium">
 							<a href={href(`/freshies/${contact.id}`)} class="hover:underline">
 								{contact.lastName}, {contact.firstName}
@@ -183,7 +190,7 @@
 						<Table.Cell class="text-right text-muted-foreground">
 							{formatDate(contact.dateAdded)}
 						</Table.Cell>
-					</Table.Row>
+					</tr>
 				{:else}
 					<Table.Row>
 						<Table.Cell colspan={5} class="py-8 text-center text-muted-foreground">

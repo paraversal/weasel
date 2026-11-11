@@ -4,6 +4,7 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 
 	import BackLink from '$lib/components/app/BackLink.svelte';
+	import CountUp from '$lib/components/app/CountUp.svelte';
 	import ConfirmDialog from '$lib/components/app/ConfirmDialog.svelte';
 	import FilterTabs from '$lib/components/app/FilterTabs.svelte';
 	import Pager from '$lib/components/app/Pager.svelte';
@@ -107,12 +108,24 @@
 		{/if}
 
 		<dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-			{#each [{ label: 'Audience', value: stats.data ? formatNumber(stats.data.total) : '…' }, { label: 'Sent', value: stats.data ? formatNumber(stats.data.sent) : '…' }, { label: 'Not sent', value: stats.data ? formatNumber(stats.data.unsent) : '…' }, { label: 'Last send', value: formatDate(stats.data?.lastBatchAt) }] as stat (stat.label)}
-				<div class="border-border-subtle rounded-lg border bg-surface-raised p-3">
+			{#each [{ label: 'Audience', value: stats.data?.total }, { label: 'Sent', value: stats.data?.sent }, { label: 'Not sent', value: stats.data?.unsent }] as stat, index (stat.label)}
+				<div
+					class="border-border-subtle stagger animate-rise rounded-lg border bg-surface-raised p-3"
+					style="--i: {index * 2}"
+				>
 					<dt class="text-xs text-muted-foreground">{stat.label}</dt>
-					<dd class="text-lg font-semibold tabular-nums">{stat.value}</dd>
+					<dd class="text-lg font-semibold">
+						{#if stat.value === undefined}…{:else}<CountUp value={stat.value} />{/if}
+					</dd>
 				</div>
 			{/each}
+			<div
+				class="border-border-subtle stagger animate-rise rounded-lg border bg-surface-raised p-3"
+				style="--i: 6"
+			>
+				<dt class="text-xs text-muted-foreground">Last send</dt>
+				<dd class="text-lg font-semibold">{formatDate(stats.data?.lastBatchAt)}</dd>
+			</div>
 		</dl>
 
 		<div class="flex flex-wrap items-center gap-3">
@@ -141,8 +154,12 @@
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
-					{#each batches.data?.items ?? [] as batch (batch.id)}
-						<Table.Row class="cursor-pointer" onclick={() => go(`/history/${batch.id}`)}>
+					{#each batches.data?.items ?? [] as batch, index (batch.id)}
+						<Table.Row
+							class="stagger animate-row-in cursor-pointer"
+							style="--i: {index}"
+							onclick={() => go(`/history/${batch.id}`)}
+						>
 							<Table.Cell>
 								<a href={href(`/history/${batch.id}`)} class="hover:underline">
 									{formatDateTime(batch.createdAt)}
@@ -174,7 +191,7 @@
 				</Table.Header>
 				<Table.Body>
 					{#each audience.data?.items ?? [] as member, index (`${member.contactId}:${member.batchId}:${index}`)}
-						<Table.Row>
+						<Table.Row class="stagger animate-row-in" style="--i: {index}">
 							<Table.Cell class="font-medium">
 								{#if member.contactId}
 									<a href={href(`/freshies/${member.contactId}`)} class="hover:underline">

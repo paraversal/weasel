@@ -9,6 +9,7 @@
 	import { commands } from '$lib/ipc/bindings';
 	import { call, fieldError } from '$lib/ipc/client';
 	import { toast } from '$lib/stores/toasts.svelte';
+	import { confetti } from '$lib/utils/confetti';
 	import { go } from '$lib/utils/paths';
 
 	/** Without `campaign` this creates (and activates) one; with it, it edits. */
@@ -57,6 +58,7 @@
 						status: 'active'
 					})
 				);
+				confetti({ count: 80, power: 12 });
 				toast.success(`Created ${created.name}`);
 			} catch {
 				toast.error(`Created ${created.name}, but could not activate it`);

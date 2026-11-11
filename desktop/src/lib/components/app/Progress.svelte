@@ -12,7 +12,10 @@
 		aria-valuemax={max}
 		aria-valuenow={value}
 	>
-		<div class="h-full rounded-full bg-primary" style:width="{percent}%"></div>
+		<div
+			class="h-full origin-left animate-grow-x rounded-full bg-primary transition-[width] duration-700 ease-out"
+			style:width="{percent}%"
+		></div>
 	</div>
 	<span class="text-xs text-muted-foreground tabular-nums">{value}/{max}</span>
 </div>

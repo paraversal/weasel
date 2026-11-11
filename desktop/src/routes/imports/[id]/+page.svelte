@@ -3,6 +3,7 @@
 	import { createQuery, keepPreviousData } from '@tanstack/svelte-query';
 
 	import BackLink from '$lib/components/app/BackLink.svelte';
+	import CountUp from '$lib/components/app/CountUp.svelte';
 	import ConfirmDialog from '$lib/components/app/ConfirmDialog.svelte';
 	import Pager from '$lib/components/app/Pager.svelte';
 	import StatusBadge from '$lib/components/app/StatusBadge.svelte';
@@ -74,10 +75,13 @@
 		{/if}
 
 		<dl class="grid grid-cols-3 gap-3 sm:grid-cols-6">
-			{#each [['Rows', batch.summary.rowCount], ['Added', batch.summary.added], ['Updated', batch.summary.updated], ['Removed', batch.summary.removed], ['Unchanged', batch.summary.unchanged], ['Invalid', batch.summary.invalid]] as [label, value] (label)}
-				<div class="border-border-subtle rounded-lg border bg-surface-raised p-3">
+			{#each [['Rows', batch.summary.rowCount], ['Added', batch.summary.added], ['Updated', batch.summary.updated], ['Removed', batch.summary.removed], ['Unchanged', batch.summary.unchanged], ['Invalid', batch.summary.invalid]] as [label, value], index (label)}
+				<div
+					class="border-border-subtle stagger animate-rise rounded-lg border bg-surface-raised p-3"
+					style="--i: {index * 2}"
+				>
 					<dt class="text-xs text-muted-foreground">{label}</dt>
-					<dd class="text-lg font-semibold tabular-nums">{value}</dd>
+					<dd class="text-lg font-semibold"><CountUp value={Number(value)} /></dd>
 				</div>
 			{/each}
 		</dl>
@@ -94,8 +98,8 @@
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
-					{#each detail.data.members.items as contact (contact.id)}
-						<Table.Row>
+					{#each detail.data.members.items as contact, index (contact.id)}
+						<Table.Row class="stagger animate-row-in" style="--i: {index}">
 							<Table.Cell class="font-medium">
 								<a href={href(`/freshies/${contact.id}`)} class="hover:underline">
 									{contact.lastName}, {contact.firstName}

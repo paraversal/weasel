@@ -67,8 +67,12 @@
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
-				{#each list.data?.items ?? [] as batch (batch.id)}
-					<Table.Row class="cursor-pointer" onclick={() => go(`/imports/${batch.id}`)}>
+				{#each list.data?.items ?? [] as batch, index (batch.id)}
+					<Table.Row
+						class="stagger animate-row-in cursor-pointer"
+						style="--i: {index}"
+						onclick={() => go(`/imports/${batch.id}`)}
+					>
 						<Table.Cell class="font-medium">
 							<a href={href(`/imports/${batch.id}`)} class="hover:underline">{batch.sourceName}</a>
 							<span class="ml-1 text-xs text-muted-foreground uppercase">{batch.sourceKind}</span>

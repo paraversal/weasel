@@ -26,7 +26,12 @@
 	const byRow = $derived(new Map(rows.map((row) => [row.row, row])));
 </script>
 
-<div class="border-border-subtle flex flex-col gap-3 rounded-lg border p-3">
+<div
+	class={[
+		'border-border-subtle flex animate-rise flex-col gap-3 rounded-lg border p-3 transition-colors duration-300',
+		conflict.rows.every((row) => wizard.decisions.has(row)) ? 'border-success/50 bg-success/5' : ''
+	]}
+>
 	<p class="text-sm font-medium">{conflictLabels[conflict.kind]}</p>
 	{#each conflict.rows as row (row)}
 		{@const source = byRow.get(row)}
