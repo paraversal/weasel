@@ -10,9 +10,11 @@ pub mod mapping;
 pub mod normalize;
 pub mod read;
 pub mod reconcile;
+pub mod service;
 pub mod source;
 
 pub use header::{HeaderAnalysis, analyze};
 pub use mapping::{SuggestedMapping, resolve, suggest};
 pub use normalize::normalize;
+pub use service::{ImportPreview, ImportService, PreviewOptions};
 pub use source::{ParsedSource, RawRow, RawTable, ReadOptions, SourceReader, read_source};

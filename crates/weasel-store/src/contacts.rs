@@ -240,73 +240,14 @@ impl ContactRepository for SqliteContacts {
 
     async fn create(&self, contact: NewContactRecord, now_ms: i64) -> CoreResult<Contact> {
         let mut tx = self.store.begin_write().await?;
-
-        let id: i64 = sqlx::query_scalar(
-            "INSERT INTO contacts \
-             (first_name, last_name, email, email_normalized, identity_key, status, source, \
-              date_added, updated_at, version, notes, metadata_json) \
-             VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, 1, ?, '{}') \
-             RETURNING id",
-        )
-        .bind(&contact.first_name)
-        .bind(&contact.last_name)
-        .bind(&contact.email.display)
-        .bind(&contact.email.normalized)
-        .bind(&contact.identity_key)
-        .bind(contact.source.as_str())
-        .bind(now_ms)
-        .bind(now_ms)
-        .bind(&contact.notes)
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(StoreError::from)?;
-
-        sqlx::query(
-            "INSERT INTO contact_email_history \
-             (contact_id, email, email_normalized, valid_from, reason) VALUES (?, ?, ?, ?, ?)",
-        )
-        .bind(id)
-        .bind(&contact.email.display)
-        .bind(&contact.email.normalized)
-        .bind(now_ms)
-        .bind(create_reason(contact.source).as_str())
-        .execute(&mut *tx)
-        .await
-        .map_err(StoreError::from)?;
-
-        // First domain write records which identity strategy produced `identity_key`.
-        sqlx::query(
-            "INSERT INTO app_meta (key, value) VALUES ('identity_strategy', ?) \
-             ON CONFLICT(key) DO NOTHING",
-        )
-        .bind(NAME_IDENTITY_ID)
-        .execute(&mut *tx)
-        .await
-        .map_err(StoreError::from)?;
-
-        let stored = Contact {
-            id,
-            first_name: contact.first_name,
-            last_name: contact.last_name,
-            email: contact.email.display,
-            email_normalized: contact.email.normalized,
-            identity_key: contact.identity_key,
-            status: ContactStatus::Active,
-            source: contact.source,
-            import_batch_id: None,
-            date_added: now_ms,
-            updated_at: now_ms,
-            version: 1,
-            notes: contact.notes,
-            metadata: Value::Object(Default::default()),
-        };
+        let stored = write_new_contact(&mut tx, contact, None, now_ms).await?;
 
         let action = match stored.source {
             ContactSource::Import => actions::CONTACT_IMPORT_CREATE,
             _ => actions::CONTACT_CREATE,
         };
         let mut event = AuditRecord::new(action, "contact");
-        event.entity_id = Some(id.to_string());
+        event.entity_id = Some(stored.id.to_string());
         event.after = Some(serde_json::to_value(&stored).map_err(CoreError::internal)?);
         audit::record(&mut tx, &event, now_ms).await?;
 
@@ -323,86 +264,22 @@ impl ContactRepository for SqliteContacts {
         now_ms: i64,
     ) -> CoreResult<Contact> {
         let mut tx = self.store.begin_write().await?;
-        let current = Self::fetch_one(&mut *tx, id).await?;
-
-        let first_name = changes.first_name.clone().unwrap_or(current.first_name.clone());
-        let last_name = changes.last_name.clone().unwrap_or(current.last_name.clone());
-        let (email, email_normalized) = match &changes.email {
-            Some(email) => (email.display.clone(), email.normalized.clone()),
-            None => (current.email.clone(), current.email_normalized.clone()),
-        };
-        let notes = changes.notes.clone().unwrap_or(current.notes.clone());
-        let names_changed = changes.first_name.is_some() || changes.last_name.is_some();
-        let identity_key = if names_changed {
-            changes.identity_key.clone()
-        } else {
-            current.identity_key.clone()
-        };
-        let email_changed =
-            email_normalized != current.email_normalized || email != current.email;
-
-        let updated = sqlx::query(
-            "UPDATE contacts SET first_name = ?, last_name = ?, email = ?, email_normalized = ?, \
-             identity_key = ?, notes = ?, version = version + 1, updated_at = ? \
-             WHERE id = ? AND version = ?",
-        )
-        .bind(&first_name)
-        .bind(&last_name)
-        .bind(&email)
-        .bind(&email_normalized)
-        .bind(&identity_key)
-        .bind(&notes)
-        .bind(now_ms)
-        .bind(id)
-        .bind(expected_version)
-        .execute(&mut *tx)
-        .await
-        .map_err(StoreError::from)?;
-        if updated.rows_affected() == 0 {
-            return Err(stale_version(&mut tx, id, expected_version).await);
-        }
-
-        if email_changed {
-            sqlx::query(
-                "UPDATE contact_email_history SET valid_to = ? \
-                 WHERE contact_id = ? AND valid_to IS NULL",
-            )
-            .bind(now_ms)
-            .bind(id)
-            .execute(&mut *tx)
-            .await
-            .map_err(StoreError::from)?;
-            sqlx::query(
-                "INSERT INTO contact_email_history \
-                 (contact_id, email, email_normalized, valid_from, reason) VALUES (?, ?, ?, ?, ?)",
-            )
-            .bind(id)
-            .bind(&email)
-            .bind(&email_normalized)
-            .bind(now_ms)
-            .bind(reason.as_str())
-            .execute(&mut *tx)
-            .await
-            .map_err(StoreError::from)?;
-        }
-
-        let before = serde_json::to_value(&current).map_err(CoreError::internal)?;
-        let stored = Contact {
+        let (current, stored) = write_contact_update(
+            &mut tx,
             id,
-            first_name,
-            last_name,
-            email,
-            email_normalized,
-            identity_key,
-            status: current.status,
-            source: current.source,
-            import_batch_id: current.import_batch_id,
-            date_added: current.date_added,
-            updated_at: now_ms,
-            version: current.version + 1,
-            notes,
-            metadata: current.metadata,
-        };
+            expected_version,
+            changes,
+            None,
+            reason,
+            now_ms,
+            format!(
+                "This contact was changed elsewhere. Reload and try again (expected version \
+                 {expected_version})."
+            ),
+            false,
+        )
+        .await?;
+        let email_changed = stored.email_normalized != current.email_normalized;
 
         let mut event = AuditRecord::new(
             if email_changed {
@@ -413,7 +290,7 @@ impl ContactRepository for SqliteContacts {
             "contact",
         );
         event.entity_id = Some(id.to_string());
-        event.before = Some(before);
+        event.before = Some(serde_json::to_value(&current).map_err(CoreError::internal)?);
         event.after = Some(serde_json::to_value(&stored).map_err(CoreError::internal)?);
         if email_changed {
             event.metadata = serde_json::json!({ "reason": reason.as_str() });
@@ -555,6 +432,189 @@ fn push_filters(
     if let Some(batch_id) = batch_id {
         query.push(" AND import_batch_id = ").push_bind(batch_id);
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn write_new_contact(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
+    contact: NewContactRecord,
+    import_batch_id: Option<i64>,
+    now_ms: i64,
+) -> CoreResult<Contact> {
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO contacts \
+         (first_name, last_name, email, email_normalized, identity_key, status, source, \
+          import_batch_id, date_added, updated_at, version, notes, metadata_json) \
+         VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, 1, ?, '{}') \
+         RETURNING id",
+    )
+    .bind(&contact.first_name)
+    .bind(&contact.last_name)
+    .bind(&contact.email.display)
+    .bind(&contact.email.normalized)
+    .bind(&contact.identity_key)
+    .bind(contact.source.as_str())
+    .bind(import_batch_id)
+    .bind(now_ms)
+    .bind(now_ms)
+    .bind(&contact.notes)
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(StoreError::from)?;
+
+    sqlx::query(
+        "INSERT INTO contact_email_history \
+         (contact_id, email, email_normalized, valid_from, reason) VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(id)
+    .bind(&contact.email.display)
+    .bind(&contact.email.normalized)
+    .bind(now_ms)
+    .bind(create_reason(contact.source).as_str())
+    .execute(&mut **tx)
+    .await
+    .map_err(StoreError::from)?;
+
+    // First domain write records which identity strategy produced `identity_key`.
+    sqlx::query(
+        "INSERT INTO app_meta (key, value) VALUES ('identity_strategy', ?) \
+         ON CONFLICT(key) DO NOTHING",
+    )
+    .bind(NAME_IDENTITY_ID)
+    .execute(&mut **tx)
+    .await
+    .map_err(StoreError::from)?;
+
+    Ok(Contact {
+        id,
+        first_name: contact.first_name,
+        last_name: contact.last_name,
+        email: contact.email.display,
+        email_normalized: contact.email.normalized,
+        identity_key: contact.identity_key,
+        status: ContactStatus::Active,
+        source: contact.source,
+        import_batch_id,
+        date_added: now_ms,
+        updated_at: now_ms,
+        version: 1,
+        notes: contact.notes,
+        metadata: Value::Object(Default::default()),
+    })
+}
+
+/// Applies a versioned contact update and maintains the open email-history row.
+///
+/// Returns `(before, after)`. `stale_message` is used both for a version miss and,
+/// when `missing_is_conflict` is set, for a deleted target.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn write_contact_update(
+    tx: &mut sqlx::Transaction<'_, Sqlite>,
+    id: i64,
+    expected_version: i64,
+    changes: ContactChanges,
+    status: Option<ContactStatus>,
+    reason: EmailChangeReason,
+    now_ms: i64,
+    stale_message: String,
+    missing_is_conflict: bool,
+) -> CoreResult<(Contact, Contact)> {
+    let current = SqliteContacts::fetch_one(&mut **tx, id).await?;
+
+    let first_name = changes
+        .first_name
+        .clone()
+        .unwrap_or(current.first_name.clone());
+    let last_name = changes.last_name.clone().unwrap_or(current.last_name.clone());
+    let (email, email_normalized) = match &changes.email {
+        Some(email) => (email.display.clone(), email.normalized.clone()),
+        None => (current.email.clone(), current.email_normalized.clone()),
+    };
+    let notes = changes.notes.clone().unwrap_or(current.notes.clone());
+    let names_changed = changes.first_name.is_some() || changes.last_name.is_some();
+    let identity_key = if names_changed {
+        changes.identity_key.clone()
+    } else {
+        current.identity_key.clone()
+    };
+    let email_changed = email_normalized != current.email_normalized || email != current.email;
+    let next_status = status.unwrap_or(current.status);
+
+    let updated = sqlx::query(
+        "UPDATE contacts SET first_name = ?, last_name = ?, email = ?, email_normalized = ?, \
+         identity_key = ?, status = ?, notes = ?, version = version + 1, updated_at = ? \
+         WHERE id = ? AND version = ?",
+    )
+    .bind(&first_name)
+    .bind(&last_name)
+    .bind(&email)
+    .bind(&email_normalized)
+    .bind(&identity_key)
+    .bind(next_status.as_str())
+    .bind(&notes)
+    .bind(now_ms)
+    .bind(id)
+    .bind(expected_version)
+    .execute(&mut **tx)
+    .await
+    .map_err(StoreError::from)?;
+    if updated.rows_affected() == 0 {
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM contacts WHERE id = ?)")
+                .bind(id)
+                .fetch_one(&mut **tx)
+                .await
+                .map_err(StoreError::from)?;
+        if exists || missing_is_conflict {
+            return Err(CoreError::Conflict(stale_message));
+        }
+        return Err(CoreError::NotFound {
+            entity: "contact",
+            id: id.to_string(),
+        });
+    }
+
+    if email_changed {
+        sqlx::query(
+            "UPDATE contact_email_history SET valid_to = ? \
+             WHERE contact_id = ? AND valid_to IS NULL",
+        )
+        .bind(now_ms)
+        .bind(id)
+        .execute(&mut **tx)
+        .await
+        .map_err(StoreError::from)?;
+        sqlx::query(
+            "INSERT INTO contact_email_history \
+             (contact_id, email, email_normalized, valid_from, reason) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(id)
+        .bind(&email)
+        .bind(&email_normalized)
+        .bind(now_ms)
+        .bind(reason.as_str())
+        .execute(&mut **tx)
+        .await
+        .map_err(StoreError::from)?;
+    }
+
+    let stored = Contact {
+        id,
+        first_name,
+        last_name,
+        email,
+        email_normalized,
+        identity_key,
+        status: next_status,
+        source: current.source,
+        import_batch_id: current.import_batch_id,
+        date_added: current.date_added,
+        updated_at: now_ms,
+        version: current.version + 1,
+        notes,
+        metadata: current.metadata.clone(),
+    };
+    Ok((current, stored))
 }
 
 fn create_reason(source: ContactSource) -> EmailChangeReason {
