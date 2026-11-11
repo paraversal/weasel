@@ -17,9 +17,14 @@ use crate::error::AppError;
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum DomainEvent {
-    SettingsChanged { keys: Vec<String> },
+    SettingsChanged {
+        keys: Vec<String>,
+    },
     #[allow(dead_code)] // emitted by command wrappers once a feature has a failing path
-    OperationFailed { operation: String, error: AppError },
+    OperationFailed {
+        operation: String,
+        error: AppError,
+    },
     // Later exec plans add: ContactsChanged, CampaignsChanged, SendBatchesChanged,
     // ImportsChanged, ImportProgress, ImportFinished.
 }

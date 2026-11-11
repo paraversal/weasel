@@ -1,3 +1,4 @@
+import Box from '@lucide/svelte/icons/box';
 import CircleHelp from '@lucide/svelte/icons/circle-help';
 import Code from '@lucide/svelte/icons/code';
 import HistoryIcon from '@lucide/svelte/icons/history';
@@ -19,7 +20,8 @@ export const icons = {
 	upload: Upload,
 	settings: SettingsIcon,
 	help: CircleHelp,
-	code: Code
+	code: Code,
+	box: Box
 };
 
 export type IconName = keyof typeof icons;

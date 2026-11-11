@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 
 	import type { NavEntry } from '$lib/features/registry';
 	import { icons } from '$lib/shell/icons';
+	import { resolvePath } from '$lib/utils/paths';
 
 	let { items }: { items: NavEntry[] } = $props();
 
@@ -14,6 +14,8 @@
 	}
 </script>
 
+<!-- Manifest hrefs are runtime strings; resolvePath applies the app base for us. -->
+<!-- eslint-disable svelte/no-navigation-without-resolve -->
 <aside
 	class="border-border-subtle flex w-56 shrink-0 flex-col gap-1 border-r bg-surface-raised/40 p-2 max-[1100px]:w-14"
 >
@@ -27,7 +29,7 @@
 			{@const Icon = icons[item.icon]}
 			{@const active = isActive(item.href)}
 			<a
-				href={resolve(item.href as Parameters<typeof resolve>[0])}
+				href={resolvePath(item.href)}
 				title={item.label}
 				aria-current={active ? 'page' : undefined}
 				class={[

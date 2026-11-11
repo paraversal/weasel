@@ -49,7 +49,9 @@ const features = [
 		title: 'Settings',
 		commands: ['settings_get_all', 'settings_update'],
 		events: ['settingsChanged']
-	}
+	},
+	{ id: 'demo', title: 'Demo', commands: ['demo_list'], events: [] }
+	// @gen:features
 ];
 
 export function mockHandlers(): Record<string, Handler> {
@@ -80,6 +82,8 @@ export function mockHandlers(): Record<string, Handler> {
 			writeSettings(settings);
 			return settings;
 		},
+		demo_list: () => [],
+		// @gen:handlers
 		// The event plugin is invoked from `listen`; no payloads are delivered in mock mode.
 		'plugin:event|listen': () => 1,
 		'plugin:event|unlisten': () => null,

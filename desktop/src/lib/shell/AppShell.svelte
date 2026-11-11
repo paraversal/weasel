@@ -1,11 +1,13 @@
 <script lang="ts">
+	/* Manifest targets are runtime strings; resolvePath applies the app base for us. */
+	/* eslint-disable svelte/no-navigation-without-resolve */
 	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { useQueryClient } from '@tanstack/svelte-query';
 
 	import { createRegistry } from '$lib/features/registry.svelte';
 	import type { CommandContext } from '$lib/features/types';
 	import { toast } from '$lib/stores/toasts.svelte';
+	import { resolvePath } from '$lib/utils/paths';
 	import { ShortcutMatcher, detectPlatform, type ShortcutBinding } from '$lib/utils/shortcuts';
 
 	import CommandPalette from './CommandPalette.svelte';
@@ -29,7 +31,7 @@
 	let paletteOpen = $state(false);
 
 	const context: CommandContext = {
-		goto: (path) => goto(resolve(path as Parameters<typeof resolve>[0])),
+		goto: (path) => goto(resolvePath(path)),
 		queryClient,
 		toast
 	};
@@ -53,7 +55,7 @@
 		{
 			spec: '?',
 			run: () => {
-				if (!paletteOpen) void goto(resolve('/help' as Parameters<typeof resolve>[0]));
+				if (!paletteOpen) void goto(resolvePath('/help'));
 			}
 		},
 		...registry.current.paletteCommands

@@ -10,7 +10,7 @@
     "build": "pnpm -C desktop build",
     "check": "pnpm -C desktop check",
     "lint": "pnpm -C desktop lint",
-    "test": "pnpm -C desktop test && node --test tools/",
+    "test": "pnpm -C desktop test && node --test tools/*.test.mjs",
     "test:e2e": "pnpm -C desktop test:e2e",
     "bindings": "cargo run -q -p weasel-desktop --bin export-bindings",
     "gen": "node tools/gen-feature.mjs",
