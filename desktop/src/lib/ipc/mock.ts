@@ -60,7 +60,9 @@ export function mockHandlers(): Record<string, Handler> {
 		'plugin:event|listen': () => 1,
 		'plugin:event|unlisten': () => null,
 		'plugin:event|emit': () => null,
-		'plugin:event|emit_to': () => null
+		'plugin:event|emit_to': () => null,
+		// `lib/ipc/log.ts` still writes to the plugin so errors survive in dev:web.
+		'plugin:log|log': () => null
 	};
 }
 

@@ -1,5 +1,6 @@
 import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { svelteTesting } from '@testing-library/svelte/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 
@@ -14,7 +15,9 @@ export default defineConfig({
 			// Also emitted into the generated tsconfig so tools (shadcn-svelte,
 			// svelte-check) resolve the same aliases Vite uses.
 			alias: { $lib: 'src/lib' }
-		})
+		}),
+		// Resolves Svelte's browser build under vitest; without it `mount` is the server stub.
+		svelteTesting()
 	],
 	clearScreen: false,
 	envPrefix: ['VITE_', 'TAURI_ENV_'],

@@ -6,6 +6,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { isIpcError } from '$lib/ipc/client';
 	import { startEventBridge } from '$lib/ipc/events';
+	import BootGate from '$lib/shell/BootGate.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
@@ -35,5 +36,7 @@
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
-	{@render children()}
+	<BootGate>
+		{@render children()}
+	</BootGate>
 </QueryClientProvider>

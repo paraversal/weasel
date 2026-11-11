@@ -1,8 +1,8 @@
 <script lang="ts">
-	// Placeholder until the app shell lands in M7; exists so the SPA builds a page.
+	// Dashboard composition lands with the first real feature (M8); the shell owns the frame.
 </script>
 
-<main class="flex h-dvh flex-col items-center justify-center gap-2 p-8">
-	<h1 class="text-2xl font-semibold">Weasel</h1>
-	<p class="text-sm text-muted-foreground">Desktop rewrite in progress.</p>
-</main>
+<div class="flex h-full flex-col items-center justify-center gap-2 text-center">
+	<h1 class="text-xl font-semibold">Dashboard</h1>
+	<p class="text-sm text-muted-foreground">No dashboard widgets are registered yet.</p>
+</div>
