@@ -1,12 +1,18 @@
 //! Contact domain types.
 
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
+    CoreError, CoreResult,
     email::EmailAddress,
     enums::{ContactSource, ContactStatus, EmailChangeReason},
-    query::PageRequest,
+    identity::{IdentityStrategy, clean_name},
+    limits,
+    ports::{Clock, ContactRepository},
+    query::{Page, PageRequest},
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -68,6 +74,170 @@ pub struct ContactChanges {
     pub last_name: Option<String>,
     pub email: Option<EmailAddress>,
     pub notes: Option<String>,
+    /// New name-derived key, set when either name changed.
+    pub identity_key: Option<String>,
+}
+
+/// Manual contact edits: validation, normalization, and the no-op shortcut.
+pub struct ContactService {
+    repo: Arc<dyn ContactRepository>,
+    clock: Arc<dyn Clock>,
+    identity: Arc<dyn IdentityStrategy>,
+}
+
+impl ContactService {
+    pub fn new(
+        repo: Arc<dyn ContactRepository>,
+        clock: Arc<dyn Clock>,
+        identity: Arc<dyn IdentityStrategy>,
+    ) -> Self {
+        Self {
+            repo,
+            clock,
+            identity,
+        }
+    }
+
+    pub async fn create_manual(&self, input: NewContact) -> CoreResult<Contact> {
+        let first_name = cleaned_name("firstName", &input.first_name)?;
+        let last_name = cleaned_name("lastName", &input.last_name)?;
+        let email = EmailAddress::parse(&input.email)?;
+        let notes = checked_notes(&input.notes)?;
+        let identity_key = self.identity.key(&first_name, &last_name);
+        self.repo
+            .create(
+                NewContactRecord {
+                    first_name,
+                    last_name,
+                    email,
+                    notes,
+                    source: ContactSource::Manual,
+                    identity_key,
+                },
+                self.clock.now_ms(),
+            )
+            .await
+    }
+
+    /// Applies only the fields that differ; an empty patch returns the stored row
+    /// without writing.
+    pub async fn update(&self, id: i64, patch: ContactPatch) -> CoreResult<Contact> {
+        let current = self.repo.get(id).await?;
+
+        let first_name = match &patch.first_name {
+            Some(raw) => cleaned_name("firstName", raw)?,
+            None => current.first_name.clone(),
+        };
+        let last_name = match &patch.last_name {
+            Some(raw) => cleaned_name("lastName", raw)?,
+            None => current.last_name.clone(),
+        };
+        let email = match &patch.email {
+            Some(raw) => EmailAddress::parse(raw)?,
+            None => EmailAddress {
+                display: current.email.clone(),
+                normalized: current.email_normalized.clone(),
+            },
+        };
+        let notes = match &patch.notes {
+            Some(raw) => checked_notes(raw)?,
+            None => current.notes.clone(),
+        };
+
+        let mut changes = ContactChanges::default();
+        if first_name != current.first_name {
+            changes.first_name = Some(first_name);
+        }
+        if last_name != current.last_name {
+            changes.last_name = Some(last_name);
+        }
+        if email.display != current.email || email.normalized != current.email_normalized {
+            changes.email = Some(email);
+        }
+        if notes != current.notes {
+            changes.notes = Some(notes);
+        }
+        if changes == ContactChanges::default() {
+            return Ok(current);
+        }
+        if changes.first_name.is_some() || changes.last_name.is_some() {
+            changes.identity_key = self.identity.key(
+                changes.first_name.as_deref().unwrap_or(&current.first_name),
+                changes.last_name.as_deref().unwrap_or(&current.last_name),
+            );
+        }
+
+        self.repo
+            .update(
+                id,
+                patch.version,
+                changes,
+                EmailChangeReason::Manual,
+                self.clock.now_ms(),
+            )
+            .await
+    }
+
+    pub async fn set_status(
+        &self,
+        id: i64,
+        expected_version: i64,
+        status: ContactStatus,
+    ) -> CoreResult<Contact> {
+        self.repo
+            .set_status(id, expected_version, status, self.clock.now_ms())
+            .await
+    }
+
+    pub async fn delete(&self, id: i64, expected_version: i64) -> CoreResult<()> {
+        self.repo
+            .delete(id, expected_version, self.clock.now_ms())
+            .await
+    }
+
+    pub async fn get(&self, id: i64) -> CoreResult<Contact> {
+        self.repo.get(id).await
+    }
+
+    pub async fn detail(&self, id: i64) -> CoreResult<ContactDetail> {
+        self.repo.detail(id).await
+    }
+
+    pub async fn list(&self, query: &ContactQuery) -> CoreResult<Page<Contact>> {
+        self.repo.list(query).await
+    }
+
+    pub async fn stats(&self) -> CoreResult<ContactStats> {
+        self.repo.stats().await
+    }
+
+    pub async fn count_active(&self) -> CoreResult<u64> {
+        self.repo.count_active().await
+    }
+}
+
+fn cleaned_name(field: &'static str, raw: &str) -> CoreResult<String> {
+    let name = clean_name(raw);
+    if name.is_empty() {
+        return Err(CoreError::validation(field, "is required"));
+    }
+    if name.chars().count() > limits::NAME_MAX {
+        return Err(CoreError::validation(
+            field,
+            format!("must be at most {} characters", limits::NAME_MAX),
+        ));
+    }
+    Ok(name)
+}
+
+fn checked_notes(raw: &str) -> CoreResult<String> {
+    if raw.chars().count() > limits::NOTES_MAX {
+        return Err(CoreError::validation(
+            "notes",
+            format!("must be at most {} characters", limits::NOTES_MAX),
+        ));
+    }
+    Ok(raw.to_owned())
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]

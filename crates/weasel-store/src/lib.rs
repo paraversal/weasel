@@ -11,6 +11,11 @@ pub mod restore;
 mod settings;
 mod tx;
 
+pub mod audit;
+pub mod contacts;
+
+pub use audit::SqliteAudit;
+pub use contacts::SqliteContacts;
 pub use error::StoreError;
 pub use meta::{get_meta, set_meta};
 pub use pool::{OpenOptions, OpenReport, Store, open, open_with};

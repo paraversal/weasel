@@ -1,5 +1,4 @@
-// Repository modules in M3+ use these; they exist first so row decoding is uniform.
-#![allow(dead_code)]
+// Repository modules use these so row decoding is uniform.
 
 use std::{fmt::Display, str::FromStr};
 
