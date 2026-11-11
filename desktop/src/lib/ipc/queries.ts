@@ -62,6 +62,12 @@ export const keys = {
 		list: (entityType: string, entityId: string, q: ActivityListRequest_Deserialize) =>
 			['activity', 'list', entityType, entityId, q] as const
 	},
+	emailChecks: {
+		all: ['emailChecks'] as const,
+		rules: ['emailChecks', 'rules'] as const,
+		flags: ['emailChecks', 'flags'] as const,
+		preview: (pattern: string) => ['emailChecks', 'preview', pattern] as const
+	},
 	searchAll: ['search'] as const,
 	search: (term: string) => ['search', term] as const
 };
@@ -168,3 +174,18 @@ export const searchQuery = (request: { term: string; limit?: number | null }) =>
 	queryKey: keys.search(request.term),
 	queryFn: () => call(commands.searchGlobal(request))
 });
+
+export const emailCheckQueries = {
+	rules: () => ({
+		queryKey: keys.emailChecks.rules,
+		queryFn: () => call(commands.emailRulesList())
+	}),
+	flags: () => ({
+		queryKey: keys.emailChecks.flags,
+		queryFn: () => call(commands.emailFlagsList())
+	}),
+	preview: (pattern: string) => ({
+		queryKey: keys.emailChecks.preview(pattern),
+		queryFn: () => call(commands.emailRulesPreview({ pattern }))
+	})
+};

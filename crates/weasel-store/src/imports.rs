@@ -211,6 +211,7 @@ impl ImportRepository for SqliteImports {
         let contacts = SqliteContacts::new(self.store.clone());
         contacts
             .list(&ContactQuery {
+                on_hold: false,
                 search: None,
                 statuses: vec![
                     ContactStatus::Active,

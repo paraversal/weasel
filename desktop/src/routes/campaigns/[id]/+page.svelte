@@ -18,6 +18,8 @@
 	import { campaignQueries, sendBatchQueries } from '$lib/ipc/queries';
 	import CampaignFormDialog from '$lib/screens/campaigns/CampaignFormDialog.svelte';
 	import PrepareSendDialog from '$lib/screens/campaigns/PrepareSendDialog.svelte';
+	import { setBounced } from '$lib/screens/email-checks/actions';
+	import EmailHoldBadge from '$lib/screens/email-checks/EmailHoldBadge.svelte';
 	import { toast } from '$lib/stores/toasts.svelte';
 	import { reportError } from '$lib/utils/errors';
 	import { formatDate, formatDateTime, formatNumber } from '$lib/utils/format';
@@ -108,7 +110,7 @@
 		{/if}
 
 		<dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-			{#each [{ label: 'Audience', value: stats.data?.total }, { label: 'Sent', value: stats.data?.sent }, { label: 'Not sent', value: stats.data?.unsent }] as stat, index (stat.label)}
+			{#each [{ label: 'Audience', value: stats.data?.total, extra: null }, { label: 'Sent', value: stats.data?.sent, extra: stats.data?.bounced ? `${formatNumber(stats.data.bounced)} bounced` : null }, { label: 'Not sent', value: stats.data?.unsent, extra: stats.data?.onHold ? `${formatNumber(stats.data.onHold)} more on hold` : null }] as stat, index (stat.label)}
 				<div
 					class="border-border-subtle stagger animate-rise rounded-lg border bg-surface-raised p-3"
 					style="--i: {index * 2}"
@@ -117,6 +119,9 @@
 					<dd class="text-lg font-semibold">
 						{#if stat.value === undefined}…{:else}<CountUp value={stat.value} />{/if}
 					</dd>
+					{#if stat.extra}
+						<dd class="animate-pop text-xs text-amber-700 dark:text-amber-300">{stat.extra}</dd>
+					{/if}
 				</div>
 			{/each}
 			<div
@@ -187,6 +192,9 @@
 						<Table.Head>Name</Table.Head>
 						<Table.Head>Email</Table.Head>
 						<Table.Head class="text-right">Sent</Table.Head>
+						{#if tab !== 'unsent'}<Table.Head class="w-0"
+								><span class="sr-only">Bounce</span></Table.Head
+							>{/if}
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
@@ -201,7 +209,20 @@
 									{member.lastName}, {member.firstName}
 								{/if}
 							</Table.Cell>
-							<Table.Cell>{member.email}</Table.Cell>
+							<Table.Cell>
+								<span class="inline-flex flex-wrap items-center gap-2">
+									<span
+										class={member.bounced || member.onHold
+											? 'text-muted-foreground line-through'
+											: ''}>{member.email}</span
+									>
+									{#if member.bounced}
+										<EmailHoldBadge hold={{ kind: 'bounced' }} label="Bounced" />
+									{:else if member.onHold}
+										<EmailHoldBadge label="On hold" />
+									{/if}
+								</span>
+							</Table.Cell>
 							<Table.Cell class="text-right text-muted-foreground">
 								{#if member.batchId}
 									<a href={href(`/history/${member.batchId}`)} class="hover:underline">
@@ -211,10 +232,28 @@
 									Not sent
 								{/if}
 							</Table.Cell>
+							{#if tab !== 'unsent'}
+								<Table.Cell class="text-right">
+									{#if member.recordId !== null}
+										{@const recordId = member.recordId}
+										<Button
+											size="sm"
+											variant="ghost"
+											class="text-muted-foreground"
+											onclick={() => setBounced(recordId, !member.bounced)}
+										>
+											{member.bounced ? 'Undo bounce' : 'Bounced?'}
+										</Button>
+									{/if}
+								</Table.Cell>
+							{/if}
 						</Table.Row>
 					{:else}
 						<Table.Row>
-							<Table.Cell colspan={3} class="py-8 text-center text-muted-foreground">
+							<Table.Cell
+								colspan={tab === 'unsent' ? 3 : 4}
+								class="py-8 text-center text-muted-foreground"
+							>
 								{audience.isPending
 									? 'Loading…'
 									: tab === 'unsent' && !search

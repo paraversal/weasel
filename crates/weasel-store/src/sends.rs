@@ -13,7 +13,13 @@ use weasel_core::{
     send::{SendBatch, SendBatchQuery, SendRecord},
 };
 
-use crate::{audit, codec::decode_enum, error::StoreError, pool::Store};
+use crate::{
+    audit,
+    codec::decode_enum,
+    email_checks::{DELIVERED_SQL, on_hold_sql},
+    error::StoreError,
+    pool::Store,
+};
 
 const BATCH_COLUMNS: &str = "b.id, b.campaign_id, c.name AS campaign_name, b.created_at, \
      b.recipient_count, b.note, b.copied_at";
@@ -123,20 +129,23 @@ impl SendRepository for SqliteSends {
             ));
         }
 
-        let recipient_rows = sqlx::query(
+        let recipient_rows = sqlx::query(sqlx::AssertSqlSafe(format!(
             "SELECT c.id, c.first_name, c.last_name, c.email, c.email_normalized \
-             FROM contacts c WHERE c.status = 'active' AND NOT EXISTS \
+             FROM contacts c WHERE c.status = 'active' AND NOT {} AND NOT EXISTS \
              (SELECT 1 FROM send_records r JOIN send_batches b ON b.id = r.batch_id \
-              WHERE b.campaign_id = ? AND r.contact_id = c.id) \
+              WHERE b.campaign_id = ? AND r.contact_id = c.id AND {DELIVERED_SQL}) \
              ORDER BY c.last_name COLLATE NOCASE, c.first_name COLLATE NOCASE, c.id",
-        )
+            on_hold_sql("c.email_normalized")
+        )))
         .bind(campaign_id)
         .fetch_all(&mut *tx)
         .await
         .map_err(StoreError::from)?;
         if recipient_rows.is_empty() {
             return Err(CoreError::InvalidState(
-                "Everyone in the audience has already received this campaign".to_owned(),
+                "Everyone in the audience has already received this campaign or is on hold \
+                 because of an invalid address"
+                    .to_owned(),
             ));
         }
 

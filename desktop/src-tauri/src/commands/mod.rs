@@ -10,6 +10,7 @@ pub mod app;
 pub mod campaigns;
 pub mod contacts;
 pub mod dto;
+pub mod email_checks;
 pub mod imports;
 pub mod search;
 pub mod send_batches;
@@ -26,6 +27,7 @@ pub fn feature_descriptors() -> Vec<FeatureDescriptor> {
         app::descriptor(),
         campaigns::descriptor(),
         contacts::descriptor(),
+        email_checks::descriptor(),
         imports::descriptor(),
         search::descriptor(),
         send_batches::descriptor(),
@@ -64,6 +66,13 @@ pub fn builder() -> tauri_specta::Builder<tauri::Wry> {
             contacts::contacts_set_status,
             contacts::contacts_delete,
             contacts::contacts_stats,
+            email_checks::email_rules_list,
+            email_checks::email_rules_add,
+            email_checks::email_rules_delete,
+            email_checks::email_rules_preview,
+            email_checks::email_flags_list,
+            email_checks::email_mark,
+            email_checks::send_records_set_bounced,
             imports::imports_pick_source,
             imports::imports_inspect,
             imports::imports_preview,

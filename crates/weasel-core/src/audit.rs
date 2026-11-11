@@ -22,6 +22,12 @@ pub mod actions {
     pub const SEND_BATCH_RECOPY: &str = "send_batch.recopy";
     pub const SEND_BATCH_NOTE: &str = "send_batch.note";
 
+    pub const EMAIL_RULE_ADD: &str = "email.rule_add";
+    pub const EMAIL_RULE_DELETE: &str = "email.rule_delete";
+    pub const EMAIL_FLAG: &str = "email.flag";
+    pub const EMAIL_UNFLAG: &str = "email.unflag";
+    pub const SEND_RECORD_BOUNCE: &str = "send_record.bounce";
+
     pub const IMPORT_PREVIEW: &str = "import.preview";
     pub const IMPORT_APPLY: &str = "import.apply";
     pub const IMPORT_DISCARD: &str = "import.discard";

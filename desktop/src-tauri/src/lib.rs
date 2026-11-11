@@ -18,6 +18,7 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use weasel_core::campaign::CampaignService;
 use weasel_core::contact::ContactService;
+use weasel_core::email_check::EmailCheckService;
 use weasel_core::identity::NameIdentity;
 use weasel_core::ports::{AuditRepository, Clipboard, Clock, FileDialog, SettingsRepository};
 use weasel_core::send::SendService;
@@ -25,8 +26,8 @@ use weasel_core::settings::SettingsService;
 use weasel_import::service::ImportService;
 use weasel_platform::{DataPaths, SystemClock};
 use weasel_store::{
-    OpenOptions, SqliteAudit, SqliteCampaigns, SqliteContacts, SqliteImports, SqliteSends,
-    SqliteSettings, Store,
+    OpenOptions, SqliteAudit, SqliteCampaigns, SqliteContacts, SqliteEmailChecks, SqliteImports,
+    SqliteSends, SqliteSettings, Store,
 };
 
 use crate::adapters::{TauriClipboard, TauriFileDialog};
@@ -197,6 +198,10 @@ pub(crate) fn compose(
         Arc::clone(&clock),
         identity,
     );
+    let email_checks = EmailCheckService::new(
+        Arc::new(SqliteEmailChecks::new(store.clone())),
+        Arc::clone(&clock),
+    );
     let audit: Arc<dyn AuditRepository> = Arc::new(SqliteAudit::new(store.clone()));
 
     Services {
@@ -206,6 +211,7 @@ pub(crate) fn compose(
         campaigns,
         sends,
         imports,
+        email_checks,
         audit,
         clock,
         clipboard,

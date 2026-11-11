@@ -56,13 +56,19 @@ pub struct CampaignQuery {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CampaignStats {
-    /// Send records for this campaign, including those whose contact was deleted.
+    /// Delivered send records for this campaign (bounces excluded), including those
+    /// whose contact was deleted.
     pub sent: u64,
-    /// Active contacts with no send record.
+    /// Active contacts with no delivered record whose address is not on hold: the next
+    /// send's recipients.
     pub unsent: u64,
-    /// Removed contacts with no send record.
+    /// Active contacts with no delivered record whose address is on hold.
+    pub on_hold: u64,
+    /// Send records marked as bounced.
+    pub bounced: u64,
+    /// Removed contacts with no delivered record.
     pub removed: u64,
-    /// `sent + unsent`.
+    /// `sent + unsent + on_hold`.
     pub total: u64,
     pub last_batch_at: Option<i64>,
 }
@@ -93,6 +99,12 @@ pub struct AudienceMember {
     pub contact_status: Option<ContactStatus>,
     pub batch_id: Option<i64>,
     pub sent_at: Option<i64>,
+    /// Set on sent rows.
+    pub record_id: Option<i64>,
+    /// A sent row whose record was marked as bounced.
+    pub bounced: bool,
+    /// An unsent row whose current address is on hold.
+    pub on_hold: bool,
 }
 
 /// Draft → active or archived; active → archived; archived → active.

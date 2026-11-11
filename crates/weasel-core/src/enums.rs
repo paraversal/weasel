@@ -42,6 +42,8 @@ macro_rules! string_enum {
     };
 }
 
+pub(crate) use string_enum;
+
 string_enum! {
     /// Whether a person is in the active roster, deliberately removed, or archived.
     pub enum ContactStatus {

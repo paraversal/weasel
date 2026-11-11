@@ -259,6 +259,8 @@ pub struct ContactQuery {
     /// Empty means `[Active, Removed]` — archived people are opt-in.
     pub statuses: Vec<ContactStatus>,
     pub import_batch_id: Option<i64>,
+    /// Only people whose current address is on hold (see `email_check`).
+    pub on_hold: bool,
     pub sort: ContactSort,
     pub page: PageRequest,
 }
@@ -269,6 +271,7 @@ impl Default for ContactQuery {
             search: None,
             statuses: Vec::new(),
             import_batch_id: None,
+            on_hold: false,
             sort: ContactSort::LastNameAsc,
             page: PageRequest::default(),
         }

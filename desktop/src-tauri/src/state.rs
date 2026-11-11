@@ -11,6 +11,7 @@ use std::{
 
 use weasel_core::campaign::CampaignService;
 use weasel_core::contact::ContactService;
+use weasel_core::email_check::EmailCheckService;
 use weasel_core::ports::{AuditRepository, Clipboard, Clock, FileDialog};
 use weasel_core::send::SendService;
 use weasel_core::settings::SettingsService;
@@ -34,6 +35,7 @@ pub struct Services {
     pub imports: ImportService,
     pub campaigns: CampaignService,
     pub sends: SendService,
+    pub email_checks: EmailCheckService,
     pub audit: Arc<dyn AuditRepository>,
     // Ports are composed here once so features only add commands.
     #[allow(dead_code)] // first read by the backup command in M4

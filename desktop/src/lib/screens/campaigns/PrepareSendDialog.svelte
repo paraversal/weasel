@@ -32,11 +32,15 @@
 	});
 
 	const unsent = $derived(stats.data?.unsent ?? 0);
+	const onHold = $derived(stats.data?.onHold ?? 0);
+	const ready = $derived((sample.data?.items ?? []).filter((member) => !member.onHold));
 	const blocked = $derived(
 		campaign.status !== 'active'
 			? 'Only active campaigns can be sent. Activate it first.'
 			: stats.data && unsent === 0
-				? 'Everyone active has already received this campaign.'
+				? onHold > 0
+					? `Everyone left (${plural(onHold, 'person', 'people')}) is on hold because of an invalid address.`
+					: 'Everyone active has already received this campaign.'
 				: null
 	);
 
@@ -91,15 +95,21 @@
 			<p class="text-sm">
 				<span class="font-semibold">{plural(unsent, 'recipient')}</span> will be copied.
 			</p>
-			{#if sample.data && sample.data.items.length > 0}
+			{#if ready.length > 0}
 				<ul class="flex flex-col gap-1 text-sm text-muted-foreground">
-					{#each sample.data.items as member (member.email)}
+					{#each ready as member (member.email)}
 						<li>{fullName(member)} &lt;{member.email}&gt;</li>
 					{/each}
-					{#if unsent > sample.data.items.length}
-						<li>…and {plural(unsent - sample.data.items.length, 'more', 'more')}</li>
+					{#if unsent > ready.length}
+						<li>…and {plural(unsent - ready.length, 'more', 'more')}</li>
 					{/if}
 				</ul>
+			{/if}
+			{#if onHold > 0}
+				<p class="text-sm text-amber-700 dark:text-amber-300">
+					{plural(onHold, 'person', 'people')} with an invalid address
+					{onHold === 1 ? 'is' : 'are'} left out until the address is fixed.
+				</p>
 			{/if}
 		{/if}
 

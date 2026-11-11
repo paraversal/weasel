@@ -27,6 +27,7 @@ use crate::commands::contacts::ContactDto;
 use crate::commands::dto::{
     ConflictKindDto, Emitted, ImportScopeDto, ImportStatusDto, PageDto, SourceKindDto, finish, page,
 };
+use crate::commands::email_checks::{EmailHoldDto, holds_for};
 use crate::error::AppError;
 use crate::events::{DomainEvent, EventEmitter};
 use crate::state::{AppState, PickedSources, Services};
@@ -232,6 +233,10 @@ pub struct PlannedRowDto {
     pub last_name: String,
     pub email: String,
     pub action: PlanActionDto,
+    /// The incoming address is on hold.
+    pub email_hold: Option<EmailHoldDto>,
+    /// For an email update: the hold on the address being replaced, if any.
+    pub previous_hold: Option<EmailHoldDto>,
 }
 
 impl From<PlannedRow> for PlannedRowDto {
@@ -242,6 +247,8 @@ impl From<PlannedRow> for PlannedRowDto {
             last_name: planned.input.last_name,
             email: planned.input.email.display,
             action: planned.action.into(),
+            email_hold: None,
+            previous_hold: None,
         }
     }
 }
@@ -353,6 +360,10 @@ pub struct ImportPreviewDto {
     pub errors: Vec<RowErrorDto>,
     pub warnings: Vec<PlanWarningDto>,
     pub removals: Vec<ContactRefDto>,
+    /// Every row whose incoming address is on hold.
+    pub on_hold: Vec<PlannedRowDto>,
+    /// Email updates that replace an address on hold with one that is not.
+    pub released: Vec<PlannedRowDto>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
@@ -730,6 +741,7 @@ pub(crate) async fn preview(
         }
     }
 
+    let (on_hold, released) = held_rows(services, preview.batch.id).await?;
     let dto = ImportPreviewDto {
         batch: preview.batch.into(),
         headers: preview.headers,
@@ -737,11 +749,7 @@ pub(crate) async fn preview(
         suggested_mapping: preview.suggested_mapping.into(),
         mapping: preview.mapping.into(),
         summary: preview.summary.into(),
-        sample: preview
-            .sample
-            .into_iter()
-            .map(PlannedRowDto::from)
-            .collect(),
+        sample: rows_with_holds(services, preview.sample).await?,
         conflicts: preview
             .conflicts
             .into_iter()
@@ -758,6 +766,8 @@ pub(crate) async fn preview(
             .into_iter()
             .map(|removal| removal.contact.into())
             .collect(),
+        on_hold,
+        released,
     };
     Ok(Emitted::one(dto, DomainEvent::ImportsChanged {}))
 }
@@ -846,7 +856,7 @@ pub(crate) async fn get(
     let members = services.imports.members(request.batch_id, &page).await?;
     Ok(ImportBatchDetailDto {
         batch: batch.into(),
-        members: members.into(),
+        members: crate::commands::contacts::page_with_holds(services, members).await?,
     })
 }
 
@@ -856,7 +866,74 @@ pub(crate) async fn plan_rows(
 ) -> Result<PageDto<PlannedRowDto>, AppError> {
     let page = page(request.limit, request.offset);
     let rows = services.imports.plan_rows(request.batch_id, &page).await?;
-    Ok(rows.into())
+    Ok(PageDto {
+        total: i64::try_from(rows.total).unwrap_or(i64::MAX),
+        offset: i64::from(rows.offset),
+        limit: i64::from(rows.limit),
+        items: rows_with_holds(services, rows.items).await?,
+    })
+}
+
+/// Planned rows with their email holds: the incoming address, and for email updates
+/// the address it replaces.
+async fn rows_with_holds(
+    services: &Services,
+    rows: Vec<PlannedRow>,
+) -> Result<Vec<PlannedRowDto>, AppError> {
+    let mut addresses = Vec::with_capacity(rows.len());
+    for row in &rows {
+        addresses.push(row.input.email.normalized.clone());
+        if let PlanAction::UpdateEmail { target } = &row.action {
+            addresses.push(target.email.to_lowercase());
+        }
+    }
+    let holds = holds_for(services, addresses).await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| {
+            let email_hold = holds.get(&row.input.email.normalized).cloned();
+            let previous_hold = match &row.action {
+                PlanAction::UpdateEmail { target } => {
+                    holds.get(&target.email.to_lowercase()).cloned()
+                }
+                _ => None,
+            };
+            PlannedRowDto {
+                email_hold,
+                previous_hold,
+                ..row.into()
+            }
+        })
+        .collect())
+}
+
+/// Every planned row whose new address is on hold, and every email update that
+/// releases a hold. Reads the whole stored plan page by page.
+async fn held_rows(
+    services: &Services,
+    batch_id: i64,
+) -> Result<(Vec<PlannedRowDto>, Vec<PlannedRowDto>), AppError> {
+    let mut on_hold = Vec::new();
+    let mut released = Vec::new();
+    let mut offset = 0;
+    loop {
+        let page = page(Some(u32::MAX), Some(offset));
+        let rows = services.imports.plan_rows(batch_id, &page).await?;
+        let fetched = u32::try_from(rows.items.len()).unwrap_or(u32::MAX);
+        let total = rows.total;
+        for row in rows_with_holds(services, rows.items).await? {
+            if row.email_hold.is_some() {
+                on_hold.push(row);
+            } else if row.previous_hold.is_some() {
+                released.push(row);
+            }
+        }
+        offset = offset.saturating_add(fetched);
+        if fetched == 0 || u64::from(offset) >= total {
+            break;
+        }
+    }
+    Ok((on_hold, released))
 }
 
 // ---------------------------------------------------------------------------

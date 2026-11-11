@@ -14,12 +14,14 @@ mod tx;
 pub mod audit;
 pub mod campaigns;
 pub mod contacts;
+pub mod email_checks;
 pub mod imports;
 pub mod sends;
 
 pub use audit::SqliteAudit;
 pub use campaigns::SqliteCampaigns;
 pub use contacts::SqliteContacts;
+pub use email_checks::SqliteEmailChecks;
 pub use error::StoreError;
 pub use imports::SqliteImports;
 pub use meta::{get_meta, set_meta};

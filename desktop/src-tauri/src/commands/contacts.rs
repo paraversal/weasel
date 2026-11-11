@@ -10,11 +10,13 @@ use weasel_core::contact::{
     BatchCount, CampaignReceipt, Contact, ContactDetail, ContactPatch, ContactQuery, ContactSort,
     ContactStats, EmailHistoryEntry, NewContact,
 };
+use weasel_core::query::Page;
 
 use crate::commands::dto::{
     ContactSortDto, ContactSourceDto, ContactStatusDto, EmailChangeReasonDto, Emitted, PageDto,
     finish, page, search_term,
 };
+use crate::commands::email_checks::{EmailHoldDto, holds_for};
 use crate::error::AppError;
 use crate::events::DomainEvent;
 use crate::state::{AppState, Services};
@@ -33,6 +35,8 @@ pub struct ContactDto {
     pub updated_at: i64,
     pub version: i64,
     pub notes: String,
+    /// Set when the current address is on hold; filled by [`page_with_holds`].
+    pub email_hold: Option<EmailHoldDto>,
 }
 
 impl From<Contact> for ContactDto {
@@ -49,8 +53,39 @@ impl From<Contact> for ContactDto {
             updated_at: contact.updated_at,
             version: contact.version,
             notes: contact.notes,
+            email_hold: None,
         }
     }
+}
+
+/// A page of contacts with each one's email hold filled in (one query per page).
+pub(crate) async fn page_with_holds(
+    services: &Services,
+    page: Page<Contact>,
+) -> Result<PageDto<ContactDto>, AppError> {
+    let addresses = page
+        .items
+        .iter()
+        .map(|contact| contact.email_normalized.clone())
+        .collect();
+    let holds = holds_for(services, addresses).await?;
+    let items = page
+        .items
+        .into_iter()
+        .map(|contact| {
+            let hold = holds.get(&contact.email_normalized).cloned();
+            ContactDto {
+                email_hold: hold,
+                ..contact.into()
+            }
+        })
+        .collect();
+    Ok(PageDto {
+        items,
+        total: i64::try_from(page.total).unwrap_or(i64::MAX),
+        offset: i64::from(page.offset),
+        limit: i64::from(page.limit),
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
@@ -148,6 +183,8 @@ pub struct ContactListRequest {
     pub search: Option<String>,
     pub statuses: Option<Vec<ContactStatusDto>>,
     pub import_batch_id: Option<i64>,
+    /// Only people whose current address is on hold.
+    pub on_hold: Option<bool>,
     pub sort: Option<ContactSortDto>,
     pub limit: Option<u32>,
     pub offset: Option<u32>,
@@ -293,13 +330,14 @@ pub(crate) async fn list(
             .map(Into::into)
             .collect(),
         import_batch_id: request.import_batch_id,
+        on_hold: request.on_hold.unwrap_or(false),
         sort: request
             .sort
             .map(Into::into)
             .unwrap_or(ContactSort::LastNameAsc),
         page: page(request.limit, request.offset),
     };
-    Ok(services.contacts.list(&query).await?.into())
+    page_with_holds(services, services.contacts.list(&query).await?).await
 }
 
 pub(crate) async fn get(
@@ -307,7 +345,13 @@ pub(crate) async fn get(
     request: ContactGetRequest,
 ) -> Result<ContactDetailDto, AppError> {
     let detail = services.contacts.detail(request.id).await?;
-    Ok(detail.into())
+    let normalized = detail.contact.email_normalized.clone();
+    let hold = holds_for(services, vec![normalized.clone()])
+        .await?
+        .remove(&normalized);
+    let mut dto = ContactDetailDto::from(detail);
+    dto.contact.email_hold = hold;
+    Ok(dto)
 }
 
 pub(crate) async fn create(
@@ -416,6 +460,7 @@ mod tests {
             search: None,
             statuses: None,
             import_batch_id: None,
+            on_hold: None,
             sort: None,
             limit: None,
             offset: None,

@@ -13,6 +13,8 @@
 	import { call, isIpcError } from '$lib/ipc/client';
 	import { contactQueries } from '$lib/ipc/queries';
 	import ContactFields, { type ContactValues } from '$lib/screens/contacts/ContactFields.svelte';
+	import { markEmail } from '$lib/screens/email-checks/actions';
+	import EmailHoldNotice from '$lib/screens/email-checks/EmailHoldNotice.svelte';
 	import { toast } from '$lib/stores/toasts.svelte';
 	import { reportError } from '$lib/utils/errors';
 	import { formatDate, formatDateTime, fullName } from '$lib/utils/format';
@@ -150,6 +152,11 @@
 				<StatusBadge status={contact.status} />
 			</div>
 			<div class="flex gap-2">
+				{#if !contact.emailHold && contact.status === 'active'}
+					<Button variant="outline" onclick={() => markEmail(contact.email, 'invalid')}>
+						Mark email invalid
+					</Button>
+				{/if}
 				{#each actions as action (action.status)}
 					<Button
 						variant={action.destructive ? 'destructive' : 'outline'}
@@ -169,6 +176,10 @@
 				</a>
 			{/if}
 		</p>
+
+		{#if contact.emailHold}
+			<EmailHoldNotice email={contact.email} hold={contact.emailHold} />
+		{/if}
 
 		<div class="grid gap-4 lg:grid-cols-2">
 			<Section title="Details">

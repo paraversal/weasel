@@ -39,7 +39,7 @@ async fn v1_database_is_backed_up_before_upgrade() {
     })
     .await
     .unwrap();
-    assert_eq!(report.schema_version, 2);
+    assert_eq!(report.schema_version, 3);
     let backup = report.backup.expect("upgrade must take a backup");
     assert!(backup.is_file(), "backup missing at {}", backup.display());
 

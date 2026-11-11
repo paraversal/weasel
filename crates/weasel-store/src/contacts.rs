@@ -17,7 +17,7 @@ use weasel_core::{
     query::Page,
 };
 
-use crate::{audit, codec::decode_enum, error::StoreError, pool::Store};
+use crate::{audit, codec::decode_enum, email_checks::on_hold_sql, error::StoreError, pool::Store};
 
 const CONTACT_COLUMNS: &str = "id, first_name, last_name, email, email_normalized, \
      identity_key, status, source, import_batch_id, date_added, updated_at, version, notes, \
@@ -68,6 +68,7 @@ impl ContactRepository for SqliteContacts {
             &statuses,
             search.as_deref(),
             query.import_batch_id,
+            query.on_hold,
         );
         rows_query.push(match query.sort {
             ContactSort::LastNameAsc => {
@@ -103,6 +104,7 @@ impl ContactRepository for SqliteContacts {
             &statuses,
             search.as_deref(),
             query.import_batch_id,
+            query.on_hold,
         );
         let total: i64 = count_query
             .build_query_scalar()
@@ -404,6 +406,7 @@ fn push_filters(
     statuses: &[ContactStatus],
     search: Option<&str>,
     batch_id: Option<i64>,
+    on_hold: bool,
 ) {
     query.push(" WHERE status IN (");
     {
@@ -425,6 +428,11 @@ fn push_filters(
     }
     if let Some(batch_id) = batch_id {
         query.push(" AND import_batch_id = ").push_bind(batch_id);
+    }
+    if on_hold {
+        query
+            .push(" AND ")
+            .push(on_hold_sql("contacts.email_normalized"));
     }
 }
 

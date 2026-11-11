@@ -86,6 +86,7 @@ impl Harness {
     async fn all_contacts(&self) -> Vec<Contact> {
         self.contacts
             .list(&ContactQuery {
+                on_hold: false,
                 search: None,
                 statuses: vec![
                     ContactStatus::Active,

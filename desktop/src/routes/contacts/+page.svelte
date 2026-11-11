@@ -15,6 +15,7 @@
 	import type { ContactSortDto, ContactStatusDto } from '$lib/ipc/bindings';
 	import { contactQueries, importQueries } from '$lib/ipc/queries';
 	import AddContactDialog from '$lib/screens/contacts/AddContactDialog.svelte';
+	import EmailHoldBadge from '$lib/screens/email-checks/EmailHoldBadge.svelte';
 	import { formatDate } from '$lib/utils/format';
 	import { flipParams } from '$lib/utils/motion';
 	import {
@@ -62,9 +63,18 @@
 		href(listHref(page.url, { sort: value === 'lastNameAsc' ? null : value }));
 
 	const importBatchId = $derived(intParam(page.url, 'import'));
+	const onHold = $derived(param(page.url, 'hold') === '1');
 
 	const list = createQuery(() => ({
-		...contactQueries.list({ search, statuses, importBatchId, sort, limit: PAGE_SIZE, offset }),
+		...contactQueries.list({
+			search,
+			statuses,
+			importBatchId,
+			onHold,
+			sort,
+			limit: PAGE_SIZE,
+			offset
+		}),
 		placeholderData: keepPreviousData
 	}));
 
@@ -105,6 +115,21 @@
 				active: t.value === tab
 			}))}
 		/>
+		<FilterTabs
+			label="Email"
+			items={[
+				{
+					label: 'Any email',
+					href: href(listHref(page.url, { hold: null })),
+					active: !onHold
+				},
+				{
+					label: 'Invalid email',
+					href: href(listHref(page.url, { hold: '1' })),
+					active: onHold
+				}
+			]}
+		/>
 		{#if imports.data && imports.data.items.length > 0}
 			<select
 				aria-label="Import"
@@ -123,7 +148,7 @@
 
 	{#if list.isError}
 		<p class="text-sm text-destructive">Could not load {term.many}: {list.error.message}</p>
-	{:else if list.data && list.data.total === 0 && !search && !importBatchId && tab === 'active'}
+	{:else if list.data && list.data.total === 0 && !search && !importBatchId && !onHold && tab === 'active'}
 		<EmptyState title="No {term.many} yet">
 			<p>Import a spreadsheet or add someone by hand.</p>
 			<div class="flex gap-2">
@@ -174,7 +199,14 @@
 								{contact.lastName}, {contact.firstName}
 							</a>
 						</Table.Cell>
-						<Table.Cell>{contact.email}</Table.Cell>
+						<Table.Cell>
+							<span class="inline-flex flex-wrap items-center gap-2">
+								<span class={contact.emailHold ? 'text-muted-foreground line-through' : ''}>
+									{contact.email}
+								</span>
+								{#if contact.emailHold}<EmailHoldBadge hold={contact.emailHold} />{/if}
+							</span>
+						</Table.Cell>
 						<Table.Cell><StatusBadge status={contact.status} /></Table.Cell>
 						<Table.Cell class="max-w-48 truncate text-muted-foreground">
 							{#if contact.importBatchId}
@@ -196,7 +228,11 @@
 				{:else}
 					<Table.Row>
 						<Table.Cell colspan={5} class="py-8 text-center text-muted-foreground">
-							{list.isPending ? 'Loading…' : `No ${term.many} match.`}
+							{list.isPending
+								? 'Loading…'
+								: onHold
+									? `No ${term.many} with an invalid email.`
+									: `No ${term.many} match.`}
 						</Table.Cell>
 					</Table.Row>
 				{/each}

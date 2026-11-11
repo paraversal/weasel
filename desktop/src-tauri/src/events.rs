@@ -31,6 +31,8 @@ pub enum DomainEvent {
     CampaignsChanged {},
     SendBatchesChanged {},
     ImportsChanged {},
+    /// An address rule, verdict or bounce changed who is on hold.
+    EmailChecksChanged {},
     ImportProgress {
         #[serde(rename = "progressId")]
         progress_id: String,

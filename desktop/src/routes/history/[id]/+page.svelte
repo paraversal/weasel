@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { setBounced } from '$lib/screens/email-checks/actions';
+	import EmailHoldBadge from '$lib/screens/email-checks/EmailHoldBadge.svelte';
 	import { page } from '$app/state';
 	import { createQuery, keepPreviousData } from '@tanstack/svelte-query';
 	import CopyIcon from '@lucide/svelte/icons/copy';
@@ -122,13 +124,15 @@
 			<SearchInput value={search ?? ''} placeholder="Search name or email" {onSearch} />
 		</div>
 		<p class="text-xs text-muted-foreground">
-			Names and addresses as they were when this batch was copied.
+			Names and addresses as they were when this batch was copied. If an email bounced, mark it
+			here: that person counts as not sent again and the address goes on hold.
 		</p>
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
 					<Table.Head>Name</Table.Head>
 					<Table.Head>Email</Table.Head>
+					<Table.Head class="w-0"><span class="sr-only">Bounce</span></Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -143,11 +147,30 @@
 								{record.lastName}, {record.firstName}
 							{/if}
 						</Table.Cell>
-						<Table.Cell>{record.email}</Table.Cell>
+						<Table.Cell>
+							<span class="inline-flex flex-wrap items-center gap-2">
+								<span class={record.status === 'failed' ? 'text-muted-foreground line-through' : ''}
+									>{record.email}</span
+								>
+								{#if record.status === 'failed'}
+									<EmailHoldBadge hold={{ kind: 'bounced' }} label="Bounced" />
+								{/if}
+							</span>
+						</Table.Cell>
+						<Table.Cell class="text-right">
+							<Button
+								size="sm"
+								variant="ghost"
+								class="text-muted-foreground"
+								onclick={() => setBounced(record.id, record.status !== 'failed')}
+							>
+								{record.status === 'failed' ? 'Undo bounce' : 'Bounced?'}
+							</Button>
+						</Table.Cell>
 					</Table.Row>
 				{:else}
 					<Table.Row>
-						<Table.Cell colspan={2} class="py-8 text-center text-muted-foreground">
+						<Table.Cell colspan={3} class="py-8 text-center text-muted-foreground">
 							{recipients.isPending ? 'Loading…' : 'Nobody matches.'}
 						</Table.Cell>
 					</Table.Row>

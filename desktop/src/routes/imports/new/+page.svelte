@@ -1,4 +1,6 @@
 <script lang="ts">
+	import EmailHoldBadge from '$lib/screens/email-checks/EmailHoldBadge.svelte';
+	import { holdLabel } from '$lib/screens/email-checks/labels';
 	import { createQuery } from '@tanstack/svelte-query';
 	import FileIcon from '@lucide/svelte/icons/file-spreadsheet';
 	import LoaderIcon from '@lucide/svelte/icons/loader-circle';
@@ -234,7 +236,7 @@
 				</Section>
 			{:else if wizard.step === 'review' && preview}
 				<dl class="grid grid-cols-3 gap-3 sm:grid-cols-6">
-					{#each [['Add', preview.summary.added], ['Update', preview.summary.updated], ['Mark removed', preview.summary.removed], ['Unchanged', preview.summary.unchanged], ['Need a decision', preview.summary.conflicts], ['Invalid', preview.summary.invalid]] as [label, value], index (label)}
+					{#each [['Add', preview.summary.added], ['Update', preview.summary.updated], ['Mark removed', preview.summary.removed], ['Unchanged', preview.summary.unchanged], ['Need a decision', preview.summary.conflicts], ['Skipped', preview.summary.invalid]] as [label, value], index (label)}
 						<div
 							class="border-border-subtle stagger animate-rise rounded-lg border bg-surface-raised p-3"
 							style="--i: {index * 2}"
@@ -266,6 +268,51 @@
 								<ConflictCard {conflict} rows={planRows.data?.items ?? preview.sample} {wizard} />
 							{/each}
 						</div>
+					</Section>
+				{/if}
+
+				{#if preview.onHold.length > 0}
+					<Section title="Invalid addresses ({preview.onHold.length})">
+						<p class="mb-2 text-sm text-muted-foreground">
+							These rows import as usual, but their addresses are on hold: they are left out of
+							every send until the address changes. Manage rules in
+							<a class="underline" href={href('/settings')}>Settings</a>.
+						</p>
+						<ul class="flex flex-col gap-1.5 text-sm">
+							{#each preview.onHold as row (row.row)}
+								<li class="flex flex-wrap items-center gap-2">
+									<span class="text-muted-foreground">Row {row.row}</span>
+									{fullName(row)}
+									<span class="text-muted-foreground">&lt;{row.email}&gt;</span>
+									{#if row.emailHold}
+										<EmailHoldBadge hold={row.emailHold} label={holdLabel(row.emailHold)} />
+									{/if}
+								</li>
+							{/each}
+						</ul>
+					</Section>
+				{/if}
+
+				{#if preview.released.length > 0}
+					<Section title="Addresses fixed ({preview.released.length})">
+						<p class="mb-2 text-sm text-muted-foreground">
+							These {term.many} had an invalid address and get a new one, so they count as not sent again
+							for campaigns they missed.
+						</p>
+						<ul class="flex flex-col gap-1.5 text-sm">
+							{#each preview.released as row (row.row)}
+								<li class="flex flex-wrap items-center gap-2">
+									{fullName(row)}
+									{#if row.action.kind === 'updateEmail'}
+										<span class="text-muted-foreground line-through">{row.action.target.email}</span
+										>
+										<span aria-hidden="true">→</span>
+									{/if}
+									<span class="font-medium text-emerald-700 dark:text-emerald-400">{row.email}</span
+									>
+								</li>
+							{/each}
+						</ul>
 					</Section>
 				{/if}
 
@@ -312,7 +359,12 @@
 									<Table.Row class="stagger animate-row-in" style="--i: {index}">
 										<Table.Cell class="text-muted-foreground">{row.row}</Table.Cell>
 										<Table.Cell>{fullName(row)}</Table.Cell>
-										<Table.Cell>{row.email}</Table.Cell>
+										<Table.Cell>
+											<span class="inline-flex flex-wrap items-center gap-2">
+												{row.email}
+												{#if row.emailHold}<EmailHoldBadge hold={row.emailHold} />{/if}
+											</span>
+										</Table.Cell>
 										<Table.Cell>{actionLabel(row.action)}</Table.Cell>
 									</Table.Row>
 								{/each}

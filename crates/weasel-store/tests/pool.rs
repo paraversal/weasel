@@ -48,8 +48,8 @@ async fn fresh_open_creates_schema_and_metadata() {
     assert!(db_path.exists());
     assert!(report.created);
     assert!(report.backup.is_none());
-    assert_eq!(report.schema_version, 2);
-    assert_eq!(store.schema_version().await.unwrap(), 2);
+    assert_eq!(report.schema_version, 3);
+    assert_eq!(store.schema_version().await.unwrap(), 3);
     store.ping().await.unwrap();
 
     let foreign_keys: i64 = sqlx::query_scalar("PRAGMA foreign_keys")
@@ -96,7 +96,7 @@ async fn reopen_applies_nothing_and_takes_no_backup() {
     .unwrap();
     assert!(!report.created);
     assert!(report.backup.is_none());
-    assert_eq!(report.schema_version, 2);
+    assert_eq!(report.schema_version, 3);
     assert!(!backups_dir.exists() || std::fs::read_dir(&backups_dir).unwrap().next().is_none());
     assert!(
         get_meta(&store, "last_backup_path")

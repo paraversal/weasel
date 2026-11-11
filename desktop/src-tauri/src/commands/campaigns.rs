@@ -49,8 +49,13 @@ impl From<Campaign> for CampaignDto {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CampaignStatsDto {
+    /// Delivered records (bounces excluded).
     pub sent: u64,
+    /// Ready for the next send.
     pub unsent: u64,
+    /// Not sent yet and held back by an invalid address.
+    pub on_hold: u64,
+    pub bounced: u64,
     pub removed: u64,
     pub total: u64,
     pub last_batch_at: Option<i64>,
@@ -61,6 +66,8 @@ impl From<CampaignStats> for CampaignStatsDto {
         Self {
             sent: stats.sent,
             unsent: stats.unsent,
+            on_hold: stats.on_hold,
+            bounced: stats.bounced,
             removed: stats.removed,
             total: stats.total,
             last_batch_at: stats.last_batch_at,
@@ -94,6 +101,9 @@ pub struct AudienceMemberDto {
     pub contact_status: Option<ContactStatusDto>,
     pub batch_id: Option<i64>,
     pub sent_at: Option<i64>,
+    pub record_id: Option<i64>,
+    pub bounced: bool,
+    pub on_hold: bool,
 }
 
 impl From<AudienceMember> for AudienceMemberDto {
@@ -106,6 +116,9 @@ impl From<AudienceMember> for AudienceMemberDto {
             contact_status: member.contact_status.map(Into::into),
             batch_id: member.batch_id,
             sent_at: member.sent_at,
+            record_id: member.record_id,
+            bounced: member.bounced,
+            on_hold: member.on_hold,
         }
     }
 }

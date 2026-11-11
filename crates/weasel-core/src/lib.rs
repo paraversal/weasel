@@ -13,6 +13,7 @@ pub mod audit;
 pub mod campaign;
 pub mod contact;
 pub mod email;
+pub mod email_check;
 pub mod enums;
 pub mod error;
 pub mod feature;

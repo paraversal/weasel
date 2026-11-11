@@ -13,6 +13,8 @@ use crate::{
     contact::{
         Contact, ContactChanges, ContactDetail, ContactQuery, ContactStats, NewContactRecord,
     },
+    email::EmailAddress,
+    email_check::{EmailFlag, EmailHold, EmailVerdict, FlagReason, InvalidRule, RulePreview},
     enums::{CampaignStatus, ContactStatus, EmailChangeReason, ImportStatus},
     error::CoreResult,
     import::{
@@ -173,6 +175,34 @@ pub trait ImportRepository: Send + Sync {
     ) -> CoreResult<ImportBatch>;
     async fn discard(&self, id: i64, now_ms: i64) -> CoreResult<ImportBatch>;
     async fn count_drafts(&self) -> CoreResult<u64>;
+}
+
+/// Invalid-address flags and rules. Every write records an audit row.
+#[async_trait]
+pub trait EmailCheckRepository: Send + Sync {
+    async fn rules(&self) -> CoreResult<Vec<InvalidRule>>;
+    /// `Conflict` when the same pattern already exists.
+    async fn add_rule(&self, pattern: &str, now_ms: i64) -> CoreResult<InvalidRule>;
+    async fn delete_rule(&self, id: i64, now_ms: i64) -> CoreResult<()>;
+    async fn preview_rule(&self, pattern: &str) -> CoreResult<RulePreview>;
+    async fn flags(&self) -> CoreResult<Vec<EmailFlag>>;
+    async fn set_flag(
+        &self,
+        email: &EmailAddress,
+        verdict: EmailVerdict,
+        reason: FlagReason,
+        now_ms: i64,
+    ) -> CoreResult<()>;
+    /// Drop the flag; if a rule still matches, store a `Valid` override instead.
+    async fn mark_valid(&self, email: &EmailAddress, now_ms: i64) -> CoreResult<()>;
+    async fn clear_flag(&self, email: &EmailAddress, now_ms: i64) -> CoreResult<()>;
+    async fn holds(&self, normalized: &[String]) -> CoreResult<HashMap<String, EmailHold>>;
+    async fn set_bounced(
+        &self,
+        record_id: i64,
+        bounced: bool,
+        now_ms: i64,
+    ) -> CoreResult<SendRecord>;
 }
 
 #[async_trait]

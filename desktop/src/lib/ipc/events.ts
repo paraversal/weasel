@@ -30,6 +30,14 @@ export const invalidations = {
 		keys.activity.all
 	],
 	importsChanged: [keys.imports.all, keys.app.health, keys.activity.all],
+	emailChecksChanged: [
+		keys.emailChecks.all,
+		keys.contacts.all,
+		keys.campaigns.all,
+		keys.sendBatches.all,
+		keys.imports.all,
+		keys.activity.all
+	],
 	importProgress: [],
 	importFinished: [keys.imports.all, keys.contacts.all, keys.campaigns.all, keys.app.health],
 	sourceDropped: [],

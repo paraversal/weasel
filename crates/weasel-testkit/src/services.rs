@@ -4,12 +4,14 @@ use std::sync::Arc;
 
 use weasel_core::campaign::CampaignService;
 use weasel_core::contact::ContactService;
+use weasel_core::email_check::EmailCheckService;
 use weasel_core::identity::{NAME_IDENTITY_ID, NameIdentity};
 use weasel_core::ports::AuditRepository;
 use weasel_core::send::SendService;
 use weasel_import::service::ImportService;
 use weasel_store::{
-    SqliteAudit, SqliteCampaigns, SqliteContacts, SqliteImports, SqliteSends, Store,
+    SqliteAudit, SqliteCampaigns, SqliteContacts, SqliteEmailChecks, SqliteImports, SqliteSends,
+    Store,
 };
 
 use crate::{FakeClipboard, FixedClock, TempDb};
@@ -23,6 +25,7 @@ pub struct TestServices {
     pub campaigns: CampaignService,
     pub sends: SendService,
     pub imports: ImportService,
+    pub email_checks: EmailCheckService,
     pub audit: Arc<dyn AuditRepository>,
 }
 
@@ -50,6 +53,10 @@ impl TestServices {
             clock.clone(),
             identity,
         );
+        let email_checks = EmailCheckService::new(
+            Arc::new(SqliteEmailChecks::new(store.clone())),
+            clock.clone(),
+        );
         let audit: Arc<dyn AuditRepository> = Arc::new(SqliteAudit::new(store.clone()));
 
         Self {
@@ -60,6 +67,7 @@ impl TestServices {
             campaigns,
             sends,
             imports,
+            email_checks,
             audit,
         }
     }

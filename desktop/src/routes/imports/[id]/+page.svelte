@@ -1,4 +1,5 @@
 <script lang="ts">
+	import EmailHoldBadge from '$lib/screens/email-checks/EmailHoldBadge.svelte';
 	import { page } from '$app/state';
 	import { createQuery, keepPreviousData } from '@tanstack/svelte-query';
 
@@ -107,7 +108,12 @@
 									{contact.lastName}, {contact.firstName}
 								</a>
 							</Table.Cell>
-							<Table.Cell>{contact.email}</Table.Cell>
+							<Table.Cell>
+								<span class="inline-flex flex-wrap items-center gap-2">
+									{contact.email}
+									{#if contact.emailHold}<EmailHoldBadge hold={contact.emailHold} />{/if}
+								</span>
+							</Table.Cell>
 							<Table.Cell><StatusBadge status={contact.status} /></Table.Cell>
 							<Table.Cell class="text-right text-muted-foreground">
 								{formatDate(contact.dateAdded)}

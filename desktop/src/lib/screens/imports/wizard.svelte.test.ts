@@ -52,6 +52,8 @@ function preview(batchId: number, conflictRows: number[][] = []): ImportPreviewD
 		mapping: { firstName: 0, lastName: 1, email: 2 },
 		summary: zero,
 		sample: [],
+		onHold: [],
+		released: [],
 		conflicts: conflictRows.map((rows) => ({
 			rows,
 			kind: 'duplicateEmailInSource' as const,

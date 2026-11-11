@@ -16,7 +16,13 @@ use weasel_core::{
     query::{Page, PageRequest, like_pattern},
 };
 
-use crate::{audit, codec::decode_enum, error::StoreError, pool::Store};
+use crate::{
+    audit,
+    codec::decode_enum,
+    email_checks::{DELIVERED_SQL, on_hold_sql},
+    error::StoreError,
+    pool::Store,
+};
 
 const CAMPAIGN_COLUMNS: &str =
     "id, name, description, subject, body, status, created_at, updated_at, version";
@@ -272,46 +278,38 @@ impl CampaignRepository for SqliteCampaigns {
             return Ok(HashMap::new());
         }
 
-        let totals = sqlx::query(
-            "SELECT status, COUNT(*) AS n FROM contacts \
-             WHERE status IN ('active', 'removed') GROUP BY status",
-        )
+        let held = on_hold_sql("c.email_normalized");
+        let totals = sqlx::query(sqlx::AssertSqlSafe(format!(
+            "SELECT c.status AS status, {held} AS held, COUNT(*) AS n FROM contacts c \
+             WHERE c.status IN ('active', 'removed') GROUP BY c.status, held"
+        )))
         .fetch_all(self.store.pool())
         .await
         .map_err(StoreError::from)?;
-        let mut active = 0;
-        let mut removed = 0;
+        let mut base = CampaignStats::default();
         for row in &totals {
             let status: String = row.try_get("status").map_err(StoreError::from)?;
+            let on_hold: bool = row.try_get("held").map_err(StoreError::from)?;
             let n = count(row, "n")?;
-            match status.as_str() {
-                "active" => active = n,
-                "removed" => removed = n,
+            match (status.as_str(), on_hold) {
+                ("active", false) => base.unsent += n,
+                ("active", true) => base.on_hold += n,
+                ("removed", _) => base.removed += n,
                 _ => {}
             }
         }
 
-        let mut stats: HashMap<i64, CampaignStats> = ids
-            .iter()
-            .map(|id| {
-                (
-                    *id,
-                    CampaignStats {
-                        unsent: active,
-                        removed,
-                        total: active,
-                        ..CampaignStats::default()
-                    },
-                )
-            })
-            .collect();
+        let mut stats: HashMap<i64, CampaignStats> =
+            ids.iter().map(|id| (*id, base.clone())).collect();
 
-        let mut batches = QueryBuilder::<Sqlite>::new(
-            "SELECT b.campaign_id AS campaign_id, COUNT(r.id) AS sent, \
+        let mut batches = QueryBuilder::<Sqlite>::new(format!(
+            "SELECT b.campaign_id AS campaign_id, \
+             COUNT(CASE WHEN {DELIVERED_SQL} THEN 1 END) AS sent, \
+             COUNT(CASE WHEN r.status = 'failed' THEN 1 END) AS bounced, \
              MAX(b.created_at) AS last_batch_at \
              FROM send_batches b LEFT JOIN send_records r ON r.batch_id = b.id \
-             WHERE b.campaign_id IN (",
-        );
+             WHERE b.campaign_id IN ("
+        ));
         push_ids(&mut batches, ids);
         batches.push(") GROUP BY b.campaign_id");
         let batches = batches
@@ -323,20 +321,21 @@ impl CampaignRepository for SqliteCampaigns {
             let campaign_id: i64 = row.try_get("campaign_id").map_err(StoreError::from)?;
             if let Some(entry) = stats.get_mut(&campaign_id) {
                 entry.sent = count(row, "sent")?;
+                entry.bounced = count(row, "bounced")?;
                 entry.last_batch_at = row.try_get("last_batch_at").map_err(StoreError::from)?;
             }
         }
 
-        let mut sent_contacts = QueryBuilder::<Sqlite>::new(
-            "SELECT b.campaign_id AS campaign_id, c.status AS status, \
+        let mut sent_contacts = QueryBuilder::<Sqlite>::new(format!(
+            "SELECT b.campaign_id AS campaign_id, c.status AS status, {held} AS held, \
              COUNT(DISTINCT r.contact_id) AS n \
              FROM send_records r \
              JOIN send_batches b ON b.id = r.batch_id \
              JOIN contacts c ON c.id = r.contact_id \
-             WHERE b.campaign_id IN (",
-        );
+             WHERE {DELIVERED_SQL} AND b.campaign_id IN ("
+        ));
         push_ids(&mut sent_contacts, ids);
-        sent_contacts.push(") GROUP BY b.campaign_id, c.status");
+        sent_contacts.push(") GROUP BY b.campaign_id, c.status, held");
         let sent_contacts = sent_contacts
             .build()
             .fetch_all(self.store.pool())
@@ -345,18 +344,20 @@ impl CampaignRepository for SqliteCampaigns {
         for row in &sent_contacts {
             let campaign_id: i64 = row.try_get("campaign_id").map_err(StoreError::from)?;
             let status: String = row.try_get("status").map_err(StoreError::from)?;
+            let on_hold: bool = row.try_get("held").map_err(StoreError::from)?;
             let n = count(row, "n")?;
             if let Some(entry) = stats.get_mut(&campaign_id) {
-                match status.as_str() {
-                    "active" => entry.unsent = entry.unsent.saturating_sub(n),
-                    "removed" => entry.removed = entry.removed.saturating_sub(n),
+                match (status.as_str(), on_hold) {
+                    ("active", false) => entry.unsent = entry.unsent.saturating_sub(n),
+                    ("active", true) => entry.on_hold = entry.on_hold.saturating_sub(n),
+                    ("removed", _) => entry.removed = entry.removed.saturating_sub(n),
                     _ => {}
                 }
             }
         }
 
         for entry in stats.values_mut() {
-            entry.total = entry.sent + entry.unsent;
+            entry.total = entry.sent + entry.unsent + entry.on_hold;
         }
         Ok(stats)
     }
@@ -374,7 +375,7 @@ impl CampaignRepository for SqliteCampaigns {
 
         let mut rows_query = QueryBuilder::<Sqlite>::new(
             "SELECT contact_id, first_name, last_name, email, contact_status, batch_id, \
-             sent_at, sort_id FROM (",
+             sent_at, sort_id, record_id, bounced, on_hold FROM (",
         );
         push_audience_arms(&mut rows_query, id, filter);
         rows_query.push(") m");
@@ -439,7 +440,8 @@ fn push_audience_arms(query: &mut QueryBuilder<Sqlite>, campaign_id: i64, filter
         query.push(
             "SELECT r.contact_id AS contact_id, r.first_name AS first_name, \
              r.last_name AS last_name, r.email AS email, c.status AS contact_status, \
-             r.batch_id AS batch_id, b.created_at AS sent_at, r.id AS sort_id \
+             r.batch_id AS batch_id, b.created_at AS sent_at, r.id AS sort_id, \
+             r.id AS record_id, (r.status = 'failed') AS bounced, 0 AS on_hold \
              FROM send_records r \
              JOIN send_batches b ON b.id = r.batch_id \
              LEFT JOIN contacts c ON c.id = r.contact_id \
@@ -451,15 +453,17 @@ fn push_audience_arms(query: &mut QueryBuilder<Sqlite>, campaign_id: i64, filter
         query.push(" UNION ALL ");
     }
     if matches!(filter, AudienceFilter::Unsent | AudienceFilter::All) {
-        query.push(
+        query.push(format!(
             "SELECT c.id AS contact_id, c.first_name AS first_name, \
              c.last_name AS last_name, c.email AS email, c.status AS contact_status, \
-             NULL AS batch_id, NULL AS sent_at, c.id AS sort_id \
+             NULL AS batch_id, NULL AS sent_at, c.id AS sort_id, \
+             NULL AS record_id, 0 AS bounced, {} AS on_hold \
              FROM contacts c \
              WHERE c.status = 'active' AND NOT EXISTS \
              (SELECT 1 FROM send_records r JOIN send_batches b ON b.id = r.batch_id \
-              WHERE b.campaign_id = ",
-        );
+              WHERE {DELIVERED_SQL} AND b.campaign_id = ",
+            on_hold_sql("c.email_normalized")
+        ));
         query.push_bind(campaign_id);
         query.push(" AND r.contact_id = c.id)");
     }
@@ -529,6 +533,9 @@ fn audience_from_row(row: &SqliteRow) -> CoreResult<AudienceMember> {
         contact_status,
         batch_id: row.try_get("batch_id").map_err(StoreError::from)?,
         sent_at: row.try_get("sent_at").map_err(StoreError::from)?,
+        record_id: row.try_get("record_id").map_err(StoreError::from)?,
+        bounced: row.try_get("bounced").map_err(StoreError::from)?,
+        on_hold: row.try_get("on_hold").map_err(StoreError::from)?,
     })
 }
 

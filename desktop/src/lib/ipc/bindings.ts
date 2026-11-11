@@ -43,6 +43,13 @@ export const commands = {
 	contactsSetStatus: (request: ContactStatusRequest) => typedError<ContactDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("contacts_set_status", { request })),
 	contactsDelete: (request: ContactDeleteRequest) => typedError<null, AppError_Serialize>(__TAURI_INVOKE("contacts_delete", { request })),
 	contactsStats: () => typedError<ContactStatsDto, AppError_Serialize>(__TAURI_INVOKE("contacts_stats")),
+	emailRulesList: () => typedError<InvalidRuleDto[], AppError_Serialize>(__TAURI_INVOKE("email_rules_list")),
+	emailRulesAdd: (request: EmailRuleRequest) => typedError<InvalidRuleDto, AppError_Serialize>(__TAURI_INVOKE("email_rules_add", { request })),
+	emailRulesDelete: (request: EmailRuleDeleteRequest) => typedError<null, AppError_Serialize>(__TAURI_INVOKE("email_rules_delete", { request })),
+	emailRulesPreview: (request: EmailRuleRequest) => typedError<RulePreviewDto, AppError_Serialize>(__TAURI_INVOKE("email_rules_preview", { request })),
+	emailFlagsList: () => typedError<EmailFlagDto[], AppError_Serialize>(__TAURI_INVOKE("email_flags_list")),
+	emailMark: (request: EmailMarkRequest) => typedError<null, AppError_Serialize>(__TAURI_INVOKE("email_mark", { request })),
+	sendRecordsSetBounced: (request: SendRecordBounceRequest) => typedError<SendRecordDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("send_records_set_bounced", { request })),
 	importsPickSource: () => typedError<SourceFileDto | null, AppError_Serialize>(__TAURI_INVOKE("imports_pick_source")),
 	importsInspect: (request: ImportInspectRequest_Deserialize) => typedError<SourceInspectionDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("imports_inspect", { request })),
 	importsPreview: (request: ImportPreviewRequest_Deserialize) => typedError<ImportPreviewDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("imports_preview", { request })),
@@ -50,7 +57,7 @@ export const commands = {
 	importsDiscard: (request: ImportDiscardRequest) => typedError<ImportBatchDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("imports_discard", { request })),
 	importsList: (request: ImportListRequest_Deserialize) => typedError<PageDto<ImportBatchDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("imports_list", { request })),
 	importsGet: (request: ImportGetRequest_Deserialize) => typedError<ImportBatchDetailDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("imports_get", { request })),
-	importsPlanRows: (request: ImportPlanRowsRequest_Deserialize) => typedError<PageDto<PlannedRowDto>, AppError_Serialize>(__TAURI_INVOKE("imports_plan_rows", { request })),
+	importsPlanRows: (request: ImportPlanRowsRequest_Deserialize) => typedError<PageDto<PlannedRowDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("imports_plan_rows", { request })),
 	searchGlobal: (request: SearchRequest_Deserialize) => typedError<SearchResultsDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("search_global", { request })),
 	sendBatchesList: (request: SendBatchListRequest_Deserialize) => typedError<PageDto<SendBatchDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("send_batches_list", { request })),
 	sendBatchesGet: (request: SendBatchGetRequest) => typedError<SendBatchDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("send_batches_get", { request })),
@@ -159,6 +166,9 @@ export type AudienceMemberDto_Deserialize = {
 	contactStatus?: ContactStatusDto | null,
 	batchId?: number | null,
 	sentAt?: number | null,
+	recordId?: number | null,
+	bounced: boolean,
+	onHold: boolean,
 };
 
 export type AudienceMemberDto_Serialize = {
@@ -169,6 +179,9 @@ export type AudienceMemberDto_Serialize = {
 	contactStatus: ContactStatusDto | null,
 	batchId: number | null,
 	sentAt: number | null,
+	recordId: number | null,
+	bounced: boolean,
+	onHold: boolean,
 };
 
 /**  What the UI calls one person and many people (default "freshie" / "freshies"). */
@@ -308,16 +321,26 @@ export type CampaignReceiptDto = {
 export type CampaignStatsDto = CampaignStatsDto_Serialize | CampaignStatsDto_Deserialize;
 
 export type CampaignStatsDto_Deserialize = {
+	/**  Delivered records (bounces excluded). */
 	sent: number,
+	/**  Ready for the next send. */
 	unsent: number,
+	/**  Not sent yet and held back by an invalid address. */
+	onHold: number,
+	bounced: number,
 	removed: number,
 	total: number,
 	lastBatchAt?: number | null,
 };
 
 export type CampaignStatsDto_Serialize = {
+	/**  Delivered records (bounces excluded). */
 	sent: number,
+	/**  Ready for the next send. */
 	unsent: number,
+	/**  Not sent yet and held back by an invalid address. */
+	onHold: number,
+	bounced: number,
 	removed: number,
 	total: number,
 	lastBatchAt: number | null,
@@ -454,6 +477,8 @@ export type ContactDto_Deserialize = {
 	updatedAt: number,
 	version: number,
 	notes: string,
+	/**  Set when the current address is on hold; filled by [`page_with_holds`]. */
+	emailHold?: EmailHoldDto | null,
 };
 
 export type ContactDto_Serialize = {
@@ -468,6 +493,8 @@ export type ContactDto_Serialize = {
 	updatedAt: number,
 	version: number,
 	notes: string,
+	/**  Set when the current address is on hold; filled by [`page_with_holds`]. */
+	emailHold: EmailHoldDto | null,
 };
 
 export type ContactGetRequest = {
@@ -480,6 +507,8 @@ export type ContactListRequest_Deserialize = {
 	search?: string | null,
 	statuses?: ContactStatusDto[] | null,
 	importBatchId?: number | null,
+	/**  Only people whose current address is on hold. */
+	onHold?: boolean | null,
 	sort?: ContactSortDto | null,
 	limit?: number | null,
 	offset?: number | null,
@@ -489,6 +518,8 @@ export type ContactListRequest_Serialize = {
 	search: string | null,
 	statuses: ContactStatusDto[] | null,
 	importBatchId: number | null,
+	/**  Only people whose current address is on hold. */
+	onHold: boolean | null,
 	sort: ContactSortDto | null,
 	limit: number | null,
 	offset: number | null,
@@ -554,7 +585,9 @@ export type DomainEvent = DomainEvent_Serialize | DomainEvent_Deserialize;
  *  Wire contract: the enum is exported to TypeScript in full, so a variant can exist
  *  before the feature that emits it lands.
  */
-export type DomainEvent_Deserialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Deserialize } | { type: "contactsChanged" } | { type: "campaignsChanged" } | { type: "sendBatchesChanged" } | { type: "importsChanged" } | { type: "importProgress"; progressId: string; phase: ImportPhaseDto; processed: number; total: number } | { type: "importFinished"; batchId: number; status: ImportStatusDto } | 
+export type DomainEvent_Deserialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Deserialize } | { type: "contactsChanged" } | { type: "campaignsChanged" } | { type: "sendBatchesChanged" } | { type: "importsChanged" } | 
+/**  An address rule, verdict or bounce changed who is on hold. */
+{ type: "emailChecksChanged" } | { type: "importProgress"; progressId: string; phase: ImportPhaseDto; processed: number; total: number } | { type: "importFinished"; batchId: number; status: ImportStatusDto } | 
 /**  A file dropped on the window was allowlisted and can be inspected. */
 { type: "sourceDropped"; source: SourceFileDto } | 
 /**  A file dropped on the window cannot be imported (unsupported type, unreadable). */
@@ -564,13 +597,24 @@ export type DomainEvent_Deserialize = { type: "settingsChanged"; keys: string[] 
  *  Wire contract: the enum is exported to TypeScript in full, so a variant can exist
  *  before the feature that emits it lands.
  */
-export type DomainEvent_Serialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Serialize } | { type: "contactsChanged" } | { type: "campaignsChanged" } | { type: "sendBatchesChanged" } | { type: "importsChanged" } | { type: "importProgress"; progressId: string; phase: ImportPhaseDto; processed: number; total: number } | { type: "importFinished"; batchId: number; status: ImportStatusDto } | 
+export type DomainEvent_Serialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Serialize } | { type: "contactsChanged" } | { type: "campaignsChanged" } | { type: "sendBatchesChanged" } | { type: "importsChanged" } | 
+/**  An address rule, verdict or bounce changed who is on hold. */
+{ type: "emailChecksChanged" } | { type: "importProgress"; progressId: string; phase: ImportPhaseDto; processed: number; total: number } | { type: "importFinished"; batchId: number; status: ImportStatusDto } | 
 /**  A file dropped on the window was allowlisted and can be inspected. */
 { type: "sourceDropped"; source: SourceFileDto } | 
 /**  A file dropped on the window cannot be imported (unsupported type, unreadable). */
 { type: "sourceRejected"; name: string; reason: string };
 
 export type EmailChangeReasonDto = "import" | "manual" | "merge" | "correction";
+
+export type EmailFlagDto = {
+	email: string,
+	/**  `false` means "marked valid": an override for a matching rule. */
+	invalid: boolean,
+	bounced: boolean,
+	createdAt: number,
+	contacts: number,
+};
 
 export type EmailHistoryDto = EmailHistoryDto_Serialize | EmailHistoryDto_Deserialize;
 
@@ -586,6 +630,28 @@ export type EmailHistoryDto_Serialize = {
 	validFrom: number,
 	validTo: number | null,
 	reason: EmailChangeReasonDto,
+};
+
+/**  Why an address is on hold. */
+export type EmailHoldDto = { kind: "manual" } | { kind: "bounced" } | { kind: "rule"; pattern: string };
+
+/**
+ *  `Invalid` holds the address; `Valid` releases it (overriding rules); `Default`
+ *  forgets any verdict so rules apply again.
+ */
+export type EmailMarkDto = "invalid" | "valid" | "default";
+
+export type EmailMarkRequest = {
+	email: string,
+	mark: EmailMarkDto,
+};
+
+export type EmailRuleDeleteRequest = {
+	id: number,
+};
+
+export type EmailRuleRequest = {
+	pattern: string,
 };
 
 /**  Machine-readable error class. The frontend switches on this, never on `message`. */
@@ -723,11 +789,15 @@ export type ImportPreviewDto_Deserialize = {
 	suggestedMapping: SuggestedMappingDto_Deserialize,
 	mapping: ColumnMappingDto,
 	summary: ImportSummaryDto,
-	sample: PlannedRowDto[],
+	sample: PlannedRowDto_Deserialize[],
 	conflicts: ConflictDto[],
 	errors: RowErrorDto[],
 	warnings: PlanWarningDto[],
 	removals: ContactRefDto[],
+	/**  Every row whose incoming address is on hold. */
+	onHold: PlannedRowDto_Deserialize[],
+	/**  Email updates that replace an address on hold with one that is not. */
+	released: PlannedRowDto_Deserialize[],
 };
 
 export type ImportPreviewDto_Serialize = {
@@ -737,11 +807,15 @@ export type ImportPreviewDto_Serialize = {
 	suggestedMapping: SuggestedMappingDto_Serialize,
 	mapping: ColumnMappingDto,
 	summary: ImportSummaryDto,
-	sample: PlannedRowDto[],
+	sample: PlannedRowDto_Serialize[],
 	conflicts: ConflictDto[],
 	errors: RowErrorDto[],
 	warnings: PlanWarningDto[],
 	removals: ContactRefDto[],
+	/**  Every row whose incoming address is on hold. */
+	onHold: PlannedRowDto_Serialize[],
+	/**  Email updates that replace an address on hold with one that is not. */
+	released: PlannedRowDto_Serialize[],
 };
 
 export type ImportPreviewRequest = ImportPreviewRequest_Serialize | ImportPreviewRequest_Deserialize;
@@ -778,6 +852,13 @@ export type ImportSummaryDto = {
 	invalid: number,
 };
 
+export type InvalidRuleDto = {
+	id: number,
+	pattern: string,
+	createdAt: number,
+	matches: number,
+};
+
 /**  A page of wire DTOs. `total` is an `i64` because JavaScript numbers are doubles. */
 export type PageDto<T> = {
 	items: T[],
@@ -790,12 +871,30 @@ export type PlanActionDto = { kind: "add" } | { kind: "updateDetails"; target: C
 
 export type PlanWarningDto = { kind: "largeRemoval"; count: number; activeImportContacts: number } | { kind: "sameFileAsBatch"; batchId: number } | { kind: "ignoredTrailingRows"; count: number };
 
-export type PlannedRowDto = {
+export type PlannedRowDto = PlannedRowDto_Serialize | PlannedRowDto_Deserialize;
+
+export type PlannedRowDto_Deserialize = {
 	row: number,
 	firstName: string,
 	lastName: string,
 	email: string,
 	action: PlanActionDto,
+	/**  The incoming address is on hold. */
+	emailHold?: EmailHoldDto | null,
+	/**  For an email update: the hold on the address being replaced, if any. */
+	previousHold?: EmailHoldDto | null,
+};
+
+export type PlannedRowDto_Serialize = {
+	row: number,
+	firstName: string,
+	lastName: string,
+	email: string,
+	action: PlanActionDto,
+	/**  The incoming address is on hold. */
+	emailHold: EmailHoldDto | null,
+	/**  For an email update: the hold on the address being replaced, if any. */
+	previousHold: EmailHoldDto | null,
 };
 
 /**  The addresses copied for a send, so the UI can show and re-copy them. */
@@ -809,6 +908,12 @@ export type RowErrorDto = {
 	row: number,
 	field: string,
 	reason: string,
+};
+
+export type RulePreviewDto = {
+	pattern: string,
+	matches: number,
+	examples: string[],
 };
 
 export type SampleRowDto = {
@@ -903,6 +1008,11 @@ export type SendBatchRecipientsRequest_Serialize = {
 export type SendBatchSetNoteRequest = {
 	id: number,
 	note: string,
+};
+
+export type SendRecordBounceRequest = {
+	recordId: number,
+	bounced: boolean,
 };
 
 export type SendRecordDto = SendRecordDto_Serialize | SendRecordDto_Deserialize;

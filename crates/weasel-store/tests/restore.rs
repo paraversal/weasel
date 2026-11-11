@@ -32,7 +32,7 @@ async fn restoring_a_backup_replaces_the_database() {
     restore_backup(&backup, &db_path).unwrap();
 
     let (store, report) = open(opts).await.unwrap();
-    assert_eq!(report.schema_version, 2);
+    assert_eq!(report.schema_version, 3);
     let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM contacts")
         .fetch_one(store.pool())
         .await
