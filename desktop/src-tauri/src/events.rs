@@ -26,7 +26,6 @@ pub enum DomainEvent {
         operation: String,
         error: AppError,
     },
-    #[allow(dead_code)]
     ContactsChanged {},
     #[allow(dead_code)]
     CampaignsChanged {},

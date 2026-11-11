@@ -7,6 +7,8 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
+	activityList: (request: ActivityListRequest_Deserialize) => typedError<PageDto<AuditEventDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("activity_list", { request })),
+	activityRecent: (request: ActivityRecentRequest_Deserialize) => typedError<PageDto<AuditEventDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("activity_recent", { request })),
 	/**
 	 *  Identity and paths. Works even when boot failed, so a bug report can always include
 	 *  the database path.
@@ -20,6 +22,13 @@ export const commands = {
 	 *  when the database is broken.
 	 */
 	appOpenDataDir: () => typedError<null, AppError_Serialize>(__TAURI_INVOKE("app_open_data_dir")),
+	contactsList: (request: ContactListRequest_Deserialize) => typedError<PageDto<ContactDto_Serialize>, AppError_Serialize>(__TAURI_INVOKE("contacts_list", { request })),
+	contactsGet: (request: ContactGetRequest) => typedError<ContactDetailDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("contacts_get", { request })),
+	contactsCreate: (request: ContactCreateRequest_Deserialize) => typedError<ContactDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("contacts_create", { request })),
+	contactsUpdate: (request: ContactUpdateRequest_Deserialize) => typedError<ContactDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("contacts_update", { request })),
+	contactsSetStatus: (request: ContactStatusRequest) => typedError<ContactDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("contacts_set_status", { request })),
+	contactsDelete: (request: ContactDeleteRequest) => typedError<null, AppError_Serialize>(__TAURI_INVOKE("contacts_delete", { request })),
+	contactsStats: () => typedError<ContactStatsDto, AppError_Serialize>(__TAURI_INVOKE("contacts_stats")),
 	settingsGetAll: () => typedError<SettingsDto, AppError_Serialize>(__TAURI_INVOKE("settings_get_all")),
 	settingsUpdate: (request: SettingsUpdateRequest_Deserialize) => typedError<SettingsDto, AppError_Serialize>(__TAURI_INVOKE("settings_update", { request })),
 };
@@ -30,6 +39,34 @@ export const events = {
 };
 
 /* Types */
+export type ActivityListRequest = ActivityListRequest_Serialize | ActivityListRequest_Deserialize;
+
+export type ActivityListRequest_Deserialize = {
+	entityType: string,
+	entityId: string,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+export type ActivityListRequest_Serialize = {
+	entityType: string,
+	entityId: string,
+	limit: number | null,
+	offset: number | null,
+};
+
+export type ActivityRecentRequest = ActivityRecentRequest_Serialize | ActivityRecentRequest_Deserialize;
+
+export type ActivityRecentRequest_Deserialize = {
+	limit?: number | null,
+	offset?: number | null,
+};
+
+export type ActivityRecentRequest_Serialize = {
+	limit: number | null,
+	offset: number | null,
+};
+
 /**  What a rejected `invoke` carries. */
 export type AppError = AppError_Serialize | AppError_Deserialize;
 
@@ -82,6 +119,176 @@ export type AppInfoDto = {
 	dataDir: string,
 };
 
+export type AuditEventDto = AuditEventDto_Serialize | AuditEventDto_Deserialize;
+
+export type AuditEventDto_Deserialize = {
+	id: number,
+	at: number,
+	actor: string,
+	action: string,
+	entityType: string,
+	entityId?: string | null,
+	before?: Value | null,
+	after?: Value | null,
+	metadata: Value,
+};
+
+export type AuditEventDto_Serialize = {
+	id: number,
+	at: number,
+	actor: string,
+	action: string,
+	entityType: string,
+	entityId: string | null,
+	before: Value | null,
+	after: Value | null,
+	metadata: Value,
+};
+
+export type BatchCountDto = {
+	batchId: number,
+	sourceName: string,
+	count: number,
+};
+
+export type CampaignReceiptDto = {
+	campaignId: number,
+	campaignName: string,
+	batchId: number,
+	sentAt: number,
+};
+
+export type ContactCreateRequest = ContactCreateRequest_Serialize | ContactCreateRequest_Deserialize;
+
+export type ContactCreateRequest_Deserialize = {
+	firstName: string,
+	lastName: string,
+	email: string,
+	notes?: string | null,
+};
+
+export type ContactCreateRequest_Serialize = {
+	firstName: string,
+	lastName: string,
+	email: string,
+	notes: string | null,
+};
+
+export type ContactDeleteRequest = {
+	id: number,
+	version: number,
+};
+
+export type ContactDetailDto = ContactDetailDto_Serialize | ContactDetailDto_Deserialize;
+
+export type ContactDetailDto_Deserialize = {
+	contact: ContactDto_Deserialize,
+	emailHistory: EmailHistoryDto_Deserialize[],
+	campaigns: CampaignReceiptDto[],
+	metadata: Value,
+};
+
+export type ContactDetailDto_Serialize = {
+	contact: ContactDto_Serialize,
+	emailHistory: EmailHistoryDto_Serialize[],
+	campaigns: CampaignReceiptDto[],
+	metadata: Value,
+};
+
+export type ContactDto = ContactDto_Serialize | ContactDto_Deserialize;
+
+export type ContactDto_Deserialize = {
+	id: number,
+	firstName: string,
+	lastName: string,
+	email: string,
+	status: ContactStatusDto,
+	source: ContactSourceDto,
+	importBatchId?: number | null,
+	dateAdded: number,
+	updatedAt: number,
+	version: number,
+	notes: string,
+};
+
+export type ContactDto_Serialize = {
+	id: number,
+	firstName: string,
+	lastName: string,
+	email: string,
+	status: ContactStatusDto,
+	source: ContactSourceDto,
+	importBatchId: number | null,
+	dateAdded: number,
+	updatedAt: number,
+	version: number,
+	notes: string,
+};
+
+export type ContactGetRequest = {
+	id: number,
+};
+
+export type ContactListRequest = ContactListRequest_Serialize | ContactListRequest_Deserialize;
+
+export type ContactListRequest_Deserialize = {
+	search?: string | null,
+	statuses?: ContactStatusDto[] | null,
+	importBatchId?: number | null,
+	sort?: ContactSortDto | null,
+	limit?: number | null,
+	offset?: number | null,
+};
+
+export type ContactListRequest_Serialize = {
+	search: string | null,
+	statuses: ContactStatusDto[] | null,
+	importBatchId: number | null,
+	sort: ContactSortDto | null,
+	limit: number | null,
+	offset: number | null,
+};
+
+export type ContactSortDto = "lastNameAsc" | "lastNameDesc" | "addedDesc" | "emailAsc";
+
+export type ContactSourceDto = "import" | "manual" | "api";
+
+export type ContactStatsDto = {
+	active: number,
+	removed: number,
+	archived: number,
+	total: number,
+	byBatch: BatchCountDto[],
+};
+
+export type ContactStatusDto = "active" | "removed" | "archived";
+
+export type ContactStatusRequest = {
+	id: number,
+	version: number,
+	status: ContactStatusDto,
+};
+
+export type ContactUpdateRequest = ContactUpdateRequest_Serialize | ContactUpdateRequest_Deserialize;
+
+export type ContactUpdateRequest_Deserialize = {
+	id: number,
+	version: number,
+	firstName?: string | null,
+	lastName?: string | null,
+	email?: string | null,
+	notes?: string | null,
+};
+
+export type ContactUpdateRequest_Serialize = {
+	id: number,
+	version: number,
+	firstName: string | null,
+	lastName: string | null,
+	email: string | null,
+	notes: string | null,
+};
+
 /**
  *  Wire contract: the enum is exported to TypeScript in full, so a variant can exist
  *  before the feature that emits it lands.
@@ -99,6 +306,24 @@ export type DomainEvent_Deserialize = { type: "settingsChanged"; keys: string[] 
  *  before the feature that emits it lands.
  */
 export type DomainEvent_Serialize = { type: "settingsChanged"; keys: string[] } | { type: "operationFailed"; operation: string; error: AppError_Serialize } | { type: "contactsChanged" } | { type: "campaignsChanged" } | { type: "sendBatchesChanged" } | { type: "importsChanged" } | { type: "importProgress"; progressId: string; phase: ImportPhaseDto; processed: number; total: number } | { type: "importFinished"; batchId: number; status: ImportStatusDto };
+
+export type EmailChangeReasonDto = "import" | "manual" | "merge" | "correction";
+
+export type EmailHistoryDto = EmailHistoryDto_Serialize | EmailHistoryDto_Deserialize;
+
+export type EmailHistoryDto_Deserialize = {
+	email: string,
+	validFrom: number,
+	validTo?: number | null,
+	reason: EmailChangeReasonDto,
+};
+
+export type EmailHistoryDto_Serialize = {
+	email: string,
+	validFrom: number,
+	validTo: number | null,
+	reason: EmailChangeReasonDto,
+};
 
 /**  Machine-readable error class. The frontend switches on this, never on `message`. */
 export type ErrorCode = "VALIDATION" | "NOT_FOUND" | "CONFLICT" | "INVALID_STATE" | "IO" | 

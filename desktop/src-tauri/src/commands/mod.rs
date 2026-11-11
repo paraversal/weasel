@@ -5,7 +5,9 @@
 
 use weasel_core::FeatureDescriptor;
 
+pub mod activity;
 pub mod app;
+pub mod contacts;
 pub mod dto;
 pub mod settings;
 #[cfg(test)]
@@ -16,7 +18,9 @@ pub mod testing;
 /// the binding-consistency test compares it with the generated TypeScript.
 pub fn feature_descriptors() -> Vec<FeatureDescriptor> {
     vec![
+        activity::descriptor(),
         app::descriptor(),
+        contacts::descriptor(),
         settings::descriptor(),
         // @gen:descriptors
     ]
@@ -29,10 +33,19 @@ pub fn builder() -> tauri_specta::Builder<tauri::Wry> {
         .error_handling(tauri_specta::ErrorHandlingMode::Result)
         .typ::<dto::PageDto<app::AppInfoDto>>()
         .commands(tauri_specta::collect_commands![
+            activity::activity_list,
+            activity::activity_recent,
             app::app_info,
             app::app_health,
             app::app_features,
             app::app_open_data_dir,
+            contacts::contacts_list,
+            contacts::contacts_get,
+            contacts::contacts_create,
+            contacts::contacts_update,
+            contacts::contacts_set_status,
+            contacts::contacts_delete,
+            contacts::contacts_stats,
             settings::settings_get_all,
             settings::settings_update,
             // @gen:commands

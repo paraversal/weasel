@@ -37,7 +37,6 @@ pub struct Services {
     pub campaigns: CampaignService,
     #[allow(dead_code)]
     pub sends: SendService,
-    #[allow(dead_code)]
     pub audit: Arc<dyn AuditRepository>,
     // Ports are composed here once so features only add commands.
     #[allow(dead_code)]

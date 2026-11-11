@@ -89,7 +89,6 @@ dto_enum_camel!(
 dto_enum_camel!(ImportPhaseDto <=> ImportPhase { Reading, Matching, Applying });
 
 /// A page of wire DTOs. `total` is an `i64` because JavaScript numbers are doubles.
-#[allow(dead_code)] // paged commands land in M1
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PageDto<T> {
@@ -115,13 +114,11 @@ where
 
 /// Applies the page contract: missing/zero means the default, values above the cap
 /// are clamped.
-#[allow(dead_code)] // paged commands land in M1
 pub fn page(limit: Option<u32>, offset: Option<u32>) -> PageRequest {
     PageRequest::new(limit.unwrap_or(0), offset.unwrap_or(0)).normalized()
 }
 
 /// Trims a search term; blank means "no filter"; very long terms are user errors.
-#[allow(dead_code)] // first used by contacts commands in M1
 pub fn search_term(raw: Option<String>) -> Result<Option<String>, AppError> {
     let Some(raw) = raw else {
         return Ok(None);
@@ -140,14 +137,14 @@ pub fn search_term(raw: Option<String>) -> Result<Option<String>, AppError> {
 }
 
 /// A write result plus the events to emit after its transaction committed.
-#[allow(dead_code)] // first used by contacts commands in M1
+#[derive(Debug)]
 pub struct Emitted<T> {
     pub value: T,
     pub events: Vec<DomainEvent>,
 }
 
-#[allow(dead_code)]
 impl<T> Emitted<T> {
+    #[allow(dead_code)] // first used by multi-event commands in M3
     pub fn new(value: T, events: Vec<DomainEvent>) -> Self {
         Self { value, events }
     }
@@ -169,7 +166,6 @@ impl<T> Emitted<T> {
 
 /// Emits queued events in order and returns the value. An error result carries no
 /// events, so this is only reached after a successful commit.
-#[allow(dead_code)] // first used by contacts commands in M1
 pub fn finish<T>(app: &AppHandle, state: &AppState, emitted: Emitted<T>) -> T {
     for event in emitted.events {
         state.events.emit(app, event);
