@@ -12,14 +12,14 @@ fn bindings_source() -> String {
     fs::read_to_string(BINDINGS).expect("bindings.ts missing: run `pnpm bindings`")
 }
 
-/// Extract every command name from `__TAURI_INVOKE<Dto>("name")` calls.
+/// Extract every command name from `__TAURI_INVOKE("name")` calls.
 fn commands_in_bindings(source: &str) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     let mut rest = source;
-    while let Some(start) = rest.find("__TAURI_INVOKE<") {
+    while let Some(start) = rest.find("__TAURI_INVOKE(") {
         let after = &rest[start..];
-        let Some(open) = after.find(">(\"") else { break };
-        let tail = &after[open + 3..];
+        let Some(open) = after.find("(\"") else { break };
+        let tail = &after[open + 2..];
         let Some(end) = tail.find('"') else { break };
         names.insert(tail[..end].to_owned());
         rest = &tail[end..];

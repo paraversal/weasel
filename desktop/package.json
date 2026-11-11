@@ -51,6 +51,7 @@
 		"vitest": "^5.1.0"
 	},
 	"dependencies": {
+		"@tanstack/svelte-query": "^6.3.9",
 		"@tauri-apps/api": "~2.12.4",
 		"@tauri-apps/plugin-log": "~2.10.1"
 	}

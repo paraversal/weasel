@@ -11,17 +11,17 @@ export const commands = {
 	 *  Identity and paths. Works even when boot failed, so a bug report can always include
 	 *  the database path.
 	 */
-	appInfo: () => __TAURI_INVOKE<AppInfoDto>("app_info"),
+	appInfo: () => typedError<AppInfoDto, AppError_Serialize>(__TAURI_INVOKE("app_info")),
 	/**  Liveness of the database. Never fails: a broken database is reported as data. */
-	appHealth: () => __TAURI_INVOKE<AppHealthDto_Serialize>("app_health"),
-	appFeatures: () => __TAURI_INVOKE<FeatureDescriptorDto[]>("app_features"),
+	appHealth: () => typedError<AppHealthDto_Serialize, AppError_Serialize>(__TAURI_INVOKE("app_health")),
+	appFeatures: () => typedError<FeatureDescriptorDto[], AppError_Serialize>(__TAURI_INVOKE("app_features")),
 	/**
 	 *  Opens the data directory in the OS file manager, so "open data folder" works even
 	 *  when the database is broken.
 	 */
-	appOpenDataDir: () => __TAURI_INVOKE<null>("app_open_data_dir"),
-	settingsGetAll: () => __TAURI_INVOKE<SettingsDto>("settings_get_all"),
-	settingsUpdate: (request: SettingsUpdateRequest_Deserialize) => __TAURI_INVOKE<SettingsDto>("settings_update", { request }),
+	appOpenDataDir: () => typedError<null, AppError_Serialize>(__TAURI_INVOKE("app_open_data_dir")),
+	settingsGetAll: () => typedError<SettingsDto, AppError_Serialize>(__TAURI_INVOKE("settings_get_all")),
+	settingsUpdate: (request: SettingsUpdateRequest_Deserialize) => typedError<SettingsDto, AppError_Serialize>(__TAURI_INVOKE("settings_update", { request })),
 };
 
 /** Events */
@@ -148,6 +148,15 @@ export type WeaselEvent_Serialize = {
 };
 
 /* Tauri Specta runtime */
+async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {
+    try {
+        return { status: "ok", data: await result };
+    } catch (e) {
+        if (e instanceof Error) throw e;
+        return { status: "error", error: e as any };
+    }
+}
+
 type EventEmit<T> = [T] extends [null] ? () => Promise<void> : (payload: T) => Promise<void>;
 
 type EventEmitTo<T> = [T] extends [null] ? (target: __TAURI_EVENT.EventTarget | string) => Promise<void> : (target: __TAURI_EVENT.EventTarget | string, payload: T) => Promise<void>;

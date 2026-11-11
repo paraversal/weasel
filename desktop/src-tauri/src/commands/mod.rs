@@ -19,8 +19,11 @@ pub fn feature_descriptors() -> Vec<FeatureDescriptor> {
     ]
 }
 
+/// Commands resolve to `{ status: "ok"; data } | { status: "error"; error }` so the
+/// frontend has one exhaustive path instead of a `try/catch` per call site.
 pub fn builder() -> tauri_specta::Builder<tauri::Wry> {
     tauri_specta::Builder::<tauri::Wry>::new()
+        .error_handling(tauri_specta::ErrorHandlingMode::Result)
         .commands(tauri_specta::collect_commands![
             app::app_info,
             app::app_health,
