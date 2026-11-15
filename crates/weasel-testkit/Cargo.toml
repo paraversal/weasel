@@ -10,6 +10,10 @@ publish.workspace = true
 name = "seed-demo"
 path = "src/bin/seed_demo.rs"
 
+[[bin]]
+name = "migrate-legacy"
+path = "src/bin/migrate_legacy.rs"
+
 [dependencies]
 weasel-core.workspace = true
 weasel-store.workspace = true

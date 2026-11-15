@@ -1,7 +1,7 @@
 # HANDOFF
 
 State of Weasel after the rewrite, and where development can go next.
-Last updated 2026-11-11, after the cleanup commit (`34e4177` is the last commit that
+Last updated 2026-11-15, after the cleanup commit (`34e4177` is the last commit that
 still contained the TUI and the planning docs).
 
 Read [`AGENTS.md`](AGENTS.md) for how to work here. This file is the *what* and *why*.
@@ -54,8 +54,9 @@ resurrecting the ADR directory.
   `desktop/src/lib/ipc/bindings.ts` by tauri-specta; CI fails if the committed bindings
   are stale. A backend change breaks the frontend build instead of failing at runtime.
 - **No legacy data import.** The app never discovers or migrates a TUI database; users
-  re-import their roster. (An untracked personal tool, `migrate-legacy`, can copy a TUI
-  database once; it is not part of the app and is not committed.)
+  re-import their roster. A developer tool outside the app,
+  `cargo run -p weasel-testkit --bin migrate-legacy -- --from <weasel_lair.db> --data-dir <dir>`,
+  can copy a TUI database into a fresh one once.
 - **Screens are plain SvelteKit routes.** The earlier feature registry, generator and
   IPC mock were deleted as unnecessary machinery for one developer and a handful of
   screens. Navigation is `desktop/src/lib/shell/nav.ts`.
@@ -82,21 +83,16 @@ resurrecting the ADR directory.
   delete the mirrors, at the cost of that rule.
 - **Unused backend descriptors.** `feature_descriptors()` and the `app_features` command
   remain from the registry era with no frontend consumer.
-- **Uncommitted local work.** `crates/weasel-testkit/src/bin/migrate_legacy.rs` and its
-  `Cargo.toml` entry are untracked. Decide to commit or delete them.
-- **Obsolete skill.** `.claude/skills/exec-plan/SKILL.md` still tells agents to write
-  `docs/rewrite/NN-exec.md`; that directory no longer exists. Delete or rewrite it.
 
 ## Suggested next steps, in order
 
-1. **Commit the cleanup** and decide what to do with `migrate-legacy`.
-2. **Package for the owner's machine** — an unsigned macOS build — so the app can be used
+1. **Package for the owner's machine** — an unsigned macOS build — so the app can be used
    for a real import → campaign → send cycle. Real use will find more than any backlog
    item will.
-3. **Rooms screen** (specified below) — the one feature that was being prototyped when
+2. **Rooms screen** (specified below) — the one feature that was being prototyped when
    the rewrite ended.
-4. **`tauri-driver` e2e** for the smoke path, before the UI grows further.
-5. Then, in rough value order: global search in the palette (`search_global` already
+3. **`tauri-driver` e2e** for the smoke path, before the UI grows further.
+4. Then, in rough value order: global search in the palette (`search_global` already
    exists), activity timeline on contact/campaign detail (`activity_list` exists), import
    progress bar (`importProgress` event exists), import undo, configurable identity
    columns, bulk conflict actions.
