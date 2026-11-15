@@ -1,85 +1,133 @@
-# weasel
+<p align="center">
+  <img src="desktop/src-tauri/icons/128x128@2x.png" width="128" height="128" alt="Weasel logo: a weasel mascot">
+</p>
 
-Email campaign management for a small team: contacts, campaigns, merge-tag
-personalisation, clipboard send batches and send history, in a native desktop window.
+<h1 align="center">Weasel</h1>
 
-**Rewrite in progress.** The Textual TUI lives under [`legacy/python-tui/`](legacy/python-tui/)
-as a behavioural reference only; its database is not imported ([ADR 0006](docs/adr/0006-clean-rewrite-no-legacy-data.md)).
-The new application is a Rust workspace behind a Tauri 2 + SvelteKit frontend. The plan and
-status live in [`docs/rewrite/`](docs/rewrite/README.md), and the milestone log in
-[`docs/rewrite/02-exec.md`](docs/rewrite/02-exec.md).
+<p align="center">
+  A small, local-first desktop app for running email campaigns to a changing list of people.
+</p>
 
-## Prerequisites
+<p align="center">
+  <a href="https://github.com/paraversal/weasel/actions/workflows/ci.yml"><img src="https://github.com/paraversal/weasel/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-blue" alt="License: GPL-3.0-only"></a>
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="Platforms: macOS, Windows, Linux">
+</p>
+
+---
+
+Weasel is for the person who gets a fresh roster spreadsheet every term and has to make
+sure everyone on it hears about the right things exactly once. Import the roster, write a
+campaign with merge tags, copy the next batch of addresses to the clipboard, paste them
+into your mail client, and Weasel remembers who already got what.
+
+Everything stays on your machine in a single SQLite file. There is no server, no account
+and no SMTP: Weasel never sends mail itself.
+
+## Features
+
+- **Roster imports** from CSV, XLSX, XLS and ODS. Header rows are detected, columns are
+  mapped in a wizard, and you preview every add, update and removal before it is applied.
+  Drag a spreadsheet anywhere onto the window to start.
+- **Conflict review** when a re-import disagrees with what you already have, decided per
+  row.
+- **Contacts that are never lost.** People move `active → removed → archived`; removing
+  someone frees their address for reuse but keeps their history.
+- **Campaigns with merge tags** and sent / unsent / all audience views.
+- **Clipboard sends.** *Prepare send* copies the addresses of everyone who has not received
+  a campaign yet and records an immutable snapshot of who got what, so later edits never
+  rewrite history. Any past batch can be copied again.
+- **Invalid-address handling** with wildcard rules, manual flags and bounce tracking.
+- **Activity log** for every change, backups before every schema migration, and a
+  dashboard that shows where your data lives.
+- Keyboard-first: a `⌘K` command palette and `g`-prefixed shortcuts, plus light and dark
+  themes.
+- Call the people whatever you like: the word for them (default *freshies*) is a setting.
+
+## Status
+
+Weasel works end to end, but it is early: there are no signed installers or
+auto-updates yet, so you build it from source. See
+[`HANDOFF.md`](HANDOFF.md) for known gaps and what comes next.
+
+## Getting started
+
+### Prerequisites
 
 | Tool | Version |
 | --- | --- |
-| Rust | pinned by [`rust-toolchain.toml`](rust-toolchain.toml) (1.99.1, with `rustfmt` and `clippy`) |
+| Rust | pinned by [`rust-toolchain.toml`](rust-toolchain.toml), with `rustfmt` and `clippy` |
 | Node.js | 24 (see [`.node-version`](.node-version)) |
-| pnpm | 12.14.0 through corepack (`corepack enable`) |
-| Platform libs | [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for macOS (Xcode command line tools), Windows (WebView2, MSVC build tools) and Linux (webkit2gtk-4.1, libappindicator3, librsvg2, patchelf) |
+| pnpm | through corepack: `corepack enable` |
+| System libraries | the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS |
 
-The Python app is not needed to build or run the rewrite.
-
-## Commands
+### Run it
 
 ```bash
-pnpm install          # workspace install (desktop + tools)
-pnpm dev              # Tauri window against Vite on :1420
-pnpm dev:web          # browser-only UI with the mock IPC backend
-pnpm check            # svelte-check
-pnpm lint             # prettier + eslint
-pnpm test             # vitest (unit + component) and the tool tests
-pnpm test:e2e         # Playwright against a mock-mode preview build
-pnpm verify           # check + lint + tests + fmt + clippy + workspace tests + layers
-pnpm bindings         # regenerate desktop/src/lib/ipc/bindings.ts (commit the result)
-pnpm seed:demo --data-dir .dev-data/demo   # deterministic demo DB (schema 2)
-pnpm gen feature foo [--nav] [--command] [--dry-run]
+pnpm install
 ```
-
-`pnpm gen feature` is the recipe from [`docs/rewrite/05-extensibility.md`](docs/rewrite/05-extensibility.md):
-it creates the manifest, component, route and (optionally) the Rust command, then registers
-everything through the `@gen:` markers. It never overwrites and never generates a migration.
-
-## Data and logs
-
-The app resolves its data directory through Tauri's app-data path, or `WEASEL_DATA_DIR` when
-set. Debug builds and `pnpm dev` use a `dev/` subfolder so they never touch a real database.
-
-```text
-<data dir>/[dev/]weasel.sqlite3   # schema 2, WAL, foreign keys on
-<data dir>/[dev/]backups/         # VACUUM INTO snapshots taken before migrations
-<data dir>/[dev/]logs/weasel.log  # rolling log (5 files, 5 MB each)
-```
-
-Seed a demo database (refuses to overwrite without `--force`) and point the app at it:
 
 ```bash
-pnpm seed:demo --data-dir .dev-data/demo --contacts 500
-WEASEL_DATA_DIR=.dev-data/demo pnpm dev
+pnpm dev:demo
 ```
 
-The dashboard shows the resolved paths and opens the folder. A database that cannot be
-opened yields the boot-error screen with the same actions instead of a crash.
+`dev:demo` seeds a throwaway database in `.dev-data/` with made-up people and opens the
+app against it, which is the best way to look around. `pnpm dev` opens the app against
+your real data directory instead.
 
-## Repository map
+### Build it
+
+```bash
+pnpm tauri build
+```
+
+## Where your data lives
+
+Weasel keeps everything in the platform's app-data directory (on macOS,
+`~/Library/Application Support/dev.weasel.app`), or in `WEASEL_DATA_DIR` when that is set.
+Debug builds use a `dev/` subfolder so they never touch a real database.
 
 ```text
-crates/weasel-core       # domain types, ports and services (no Tauri, no SQLite)
-crates/weasel-store      # SQLite pool, migrations, repositories
-crates/weasel-import     # file parsing and reconciliation (phase 2)
-crates/weasel-platform   # data paths, clock, filesystem validation (Tauri-free)
-crates/weasel-testkit    # TempDb, fixed clock, fake clipboard/dialog
-desktop/                 # SvelteKit SPA, Tauri shell, feature modules
-desktop/src/lib/features # one folder per feature; manifests drive nav, palette, widgets
-desktop/src-tauri        # Tauri adapter crate, commands, bindings export
-migrations/              # ordered SQL migrations, global sequence
-tools/                   # layer check and feature generator (zero deps)
-legacy/python-tui/       # the previous Textual app, reference only
-docs/rewrite/            # architecture, data model, IPC, extensibility, plan
+<data dir>/weasel.sqlite3   # the database (WAL, foreign keys on)
+<data dir>/backups/         # VACUUM INTO snapshots taken before migrations
+<data dir>/logs/weasel.log  # rolling log; email addresses are redacted
 ```
 
-## Pinned versions
+## How it is built
 
-Rust 1.99.1 · Node 24.1.0 · pnpm 12.14.0 · Tauri 2.12.5 · tauri-specta 2.0.0-rc.28 ·
-SvelteKit 3.2.0 · Svelte 5.57.3 · Vite 8.3.5 · Tailwind CSS 4.3 · SQLx 0.9 · Vitest 5.1 ·
-Playwright 1.65.
+A Rust workspace behind a [Tauri 2](https://tauri.app) shell and a
+[SvelteKit](https://svelte.dev) frontend (Svelte 5, Tailwind CSS 4, shadcn-svelte).
+Rust owns all data logic; the UI only renders. The IPC surface is generated into
+TypeScript by tauri-specta, so a backend change breaks the frontend build instead of
+failing at runtime.
+
+```text
+crates/weasel-core       domain types, validation, queries, audit (no Tauri, no SQLite)
+crates/weasel-store      SQLite, migrations, transactions, backups
+crates/weasel-import     file readers, header detection, column mapping, reconciliation
+crates/weasel-platform   OS effects: data paths, clock, clipboard, dialogs
+crates/weasel-testkit    temp databases, fakes, demo seeding
+desktop/src-tauri        Tauri commands, events and DTOs
+desktop/src              SvelteKit UI
+migrations/              forward-only SQL, embedded at compile time
+```
+
+`tools/check-layers.sh` keeps those layers honest in CI.
+
+## Development
+
+| Command | What it does |
+| --- | --- |
+| `pnpm verify` | everything CI runs: svelte-check, lint, vitest, `cargo fmt`, clippy, `cargo test`, layer check |
+| `pnpm dev:demo` | app against a freshly seeded demo database |
+| `pnpm test` | frontend unit tests |
+| `cargo test --workspace` | Rust tests |
+| `pnpm bindings` | regenerate `desktop/src/lib/ipc/bindings.ts` after changing a command |
+| `pnpm seed:demo -- --contacts 5000` | seed a larger demo database |
+
+The rules for working in this repository (transactions, auditing, migrations, frontend
+conventions) are in [`AGENTS.md`](AGENTS.md). Run `pnpm verify` before sending a change.
+
+## License
+
+[GPL-3.0-only](LICENSE).

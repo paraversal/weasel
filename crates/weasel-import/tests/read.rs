@@ -279,7 +279,7 @@ fn ods_fixture_is_read_through_calamine() {
 #[test]
 fn xls_dispatch_reaches_the_sheet_reader() {
     // No tiny fixtures were available for the legacy binary format; this proves the
-    // extension dispatch and the reader's error mapping (03-exec §10 records it).
+    // extension dispatch and the reader's error mapping.
     let dir = TempDir::new().unwrap();
     let path = dir.path().join("legacy.xls");
     std::fs::write(&path, b"not a real workbook").unwrap();

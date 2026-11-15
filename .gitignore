@@ -11,8 +11,6 @@
 node_modules/
 /desktop/build/
 /desktop/.svelte-kit/
-/desktop/test-results/
-/desktop/playwright-report/
 
 # Local data — never commit real rosters or databases
 *.db
@@ -26,7 +24,7 @@ node_modules/
 !**/tests/fixtures/**
 .dev-data/
 
-# Python reference app
+# Local Python leftovers (no Python ships; the venv may still exist on a machine)
 __pycache__/
 .venv/
 .ipynb_checkpoints/

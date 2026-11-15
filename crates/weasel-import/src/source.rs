@@ -74,7 +74,8 @@ pub struct ParsedSource {
     pub ignored_trailing: u32,
 }
 
-/// The extension point described in `docs/rewrite/05-extension-points.md`.
+/// The extension point for a new file format: add a reader here and register it in
+/// `READERS`.
 ///
 /// A reader only decodes bytes into rows. Header detection, mapping and
 /// reconciliation are shared and never reimplemented per format.

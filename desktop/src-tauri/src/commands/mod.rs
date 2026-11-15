@@ -1,7 +1,7 @@
 //! Command surface. Each feature module owns its commands, DTOs and descriptor.
 //!
-//! The three `@gen:` markers are maintained by `pnpm gen feature`; keep their exact
-//! text and placement.
+//! Adding a command means: implement it in the owning module, list it in `builder()`,
+//! then run `pnpm bindings` and commit the regenerated TypeScript.
 
 use weasel_core::FeatureDescriptor;
 
@@ -17,10 +17,9 @@ pub mod send_batches;
 pub mod settings;
 #[cfg(test)]
 pub mod testing;
-// @gen:modules
 
-/// Every feature registered in the backend. The developer page renders this list and
-/// the binding-consistency test compares it with the generated TypeScript.
+/// Every feature registered in the backend. `app_features` returns this list and the
+/// binding-consistency test compares it with the generated TypeScript.
 pub fn feature_descriptors() -> Vec<FeatureDescriptor> {
     vec![
         activity::descriptor(),
@@ -32,7 +31,6 @@ pub fn feature_descriptors() -> Vec<FeatureDescriptor> {
         search::descriptor(),
         send_batches::descriptor(),
         settings::descriptor(),
-        // @gen:descriptors
     ]
 }
 
